@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "AI Tab Grouper",
+  "version": "1.0.0",
+  "description": "Automatically groups your browser tabs by topic using Chrome's on-device AI (Gemini Nano). Fully private — nothing leaves your machine.",
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "minimum_chrome_version": "138",
+  "commands": {
+    "organize-all": {
+      "suggested_key": {
+        "default": "Alt+Shift+G"
+      },
+      "description": "Group all tabs now"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "subdomainStrategy": "prefix",
+  "pinnedRules": [
+    { "match": "atlassian.net/wiki", "label": "Confluence" },
+    { "match": "atlassian.net", "label": "Jira" },
+    { "match": "github.com", "label": "Code" },
+    { "match": "bitbucket.org", "label": "Code" }
+  ]
+}

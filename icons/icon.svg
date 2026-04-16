@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- rounded-square app background -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#7c83ff"/>
+
+  <!-- grouping bracket tying the bars together -->
+  <path d="M19 36 q-5 0 -5 7 v36 q0 7 5 7" stroke="#ffffff"
+        stroke-width="4" stroke-linecap="round" fill="none"/>
+
+  <!-- three grouped "tab" bars, each with a colored group dot -->
+  <rect x="28" y="34" width="74" height="16" rx="8" fill="#ffffff"/>
+  <circle cx="36" cy="42" r="4.5" fill="#81c995"/>
+
+  <rect x="40" y="58" width="62" height="16" rx="8" fill="#dfe2ff"/>
+  <circle cx="48" cy="66" r="4.5" fill="#fdd663"/>
+
+  <rect x="28" y="82" width="74" height="16" rx="8" fill="#ffffff"/>
+  <circle cx="36" cy="90" r="4.5" fill="#f28b82"/>
+</svg>

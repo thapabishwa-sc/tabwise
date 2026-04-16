@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="popup.css">
+  <title>AI Tab Grouper</title>
+</head>
+<body>
+  <div class="header">
+    <h1>AI Tab Grouper <span id="ai-badge" title="">AI</span></h1>
+    <button id="btn-settings" title="Settings">&#9881;</button>
+  </div>
+
+  <div class="toolbar">
+    <button id="btn-organize" class="btn-primary" title="Group every tab by topic">Group all tabs</button>
+    <button id="btn-ungroup" class="btn-secondary" title="Remove all groups">Ungroup</button>
+    <button id="btn-nl-toggle" class="btn-icon" title="Group with a natural-language command">&#10024;</button>
+    <button id="btn-sessions" class="btn-icon" title="Saved sessions">&#128190;</button>
+  </div>
+
+  <!-- Natural-language command (toggled) -->
+  <div class="nl-row" id="nl-row" style="display:none">
+    <input type="text" id="nl-input" placeholder="Tell AI how to group… (e.g. by project)">
+    <button id="btn-nl">Go</button>
+  </div>
+
+  <!-- Quick search -->
+  <input type="text" id="search" class="search" placeholder="Search tabs…">
+
+  <!-- Sessions panel (toggled) -->
+  <div id="sessions-panel" class="sessions" style="display:none">
+    <div class="nl-row">
+      <input type="text" id="session-name" placeholder="Session name…">
+      <button id="btn-save-session">Save</button>
+    </div>
+    <div id="session-list" class="session-list"></div>
+  </div>
+
+  <!-- AI model prepare banner (shown only when the model needs downloading) -->
+  <div id="ai-prepare" class="prepare" style="display:none">
+    <div class="prepare-row">
+      <span id="ai-prepare-text">On-device AI model not downloaded yet.</span>
+      <button id="btn-prepare-ai">Prepare AI</button>
+    </div>
+    <div id="ai-progress-wrap" class="progress-wrap" style="display:none">
+      <div id="ai-progress-bar" class="progress-bar"></div>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div id="groups" class="groups">
+    <div class="empty-state">Loading…</div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

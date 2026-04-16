@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tab Grouper — Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e; color: #e0e0e0; padding: 40px; max-width: 640px; margin: 0 auto;
+    }
+    h1 { font-size: 22px; color: #7c83ff; margin-bottom: 6px; }
+    .subtitle { color: #6a6a8a; font-size: 13px; margin-bottom: 28px; }
+    .section {
+      margin-bottom: 24px; background: #16162b; border: 1px solid #2a2a4a;
+      border-radius: 8px; padding: 18px;
+    }
+    .section h2 { font-size: 14px; color: #a0a0cc; margin-bottom: 14px; font-weight: 600; }
+    .field { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+    .field + .field { border-top: 1px solid #2a2a4a; }
+    .field label { font-size: 13px; color: #c0c0e0; }
+    .field .hint { font-size: 11px; color: #6a6a8a; margin-top: 2px; max-width: 380px; }
+    select, input[type="number"], input[type="text"].inp {
+      background: #1a1a2e; border: 1px solid #2a2a4a; color: #e0e0e0;
+      padding: 5px 10px; border-radius: 4px; font-size: 12px; outline: none; flex: 0 0 auto;
+    }
+    input[type="number"] { width: 64px; }
+    input[type="text"].inp { width: 120px; }
+    select:focus, input:focus { border-color: #7c83ff; }
+
+    .toggle { position: relative; width: 40px; height: 22px; flex: 0 0 auto; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider { position: absolute; inset: 0; background: #2a2a4a; border-radius: 22px; cursor: pointer; transition: 0.2s; }
+    .toggle .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: #6a6a8a; border-radius: 50%; transition: 0.2s; }
+    .toggle input:checked + .slider { background: #7c83ff; }
+    .toggle input:checked + .slider::before { transform: translateX(18px); background: #fff; }
+
+    textarea {
+      width: 100%; min-height: 90px; background: #1a1a2e; border: 1px solid #2a2a4a;
+      color: #e0e0e0; padding: 8px 10px; border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; resize: vertical; margin-top: 8px; outline: none;
+    }
+    textarea:focus { border-color: #7c83ff; }
+    .textarea-hint { font-size: 11px; color: #6a6a8a; margin-top: 4px; }
+    code { color: #7c83ff; }
+
+    .badge { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: #2a2a4a; color: #9a9ac0; }
+    #btn-prepare { font-size: 12px; padding: 6px 12px; border: none; border-radius: 5px; background: #7c83ff; color: #fff; cursor: pointer; }
+    #btn-prepare:disabled { background: #4a4a6a; }
+    .progress-wrap { margin-top: 10px; height: 6px; background: #2a2a4a; border-radius: 3px; overflow: hidden; display: none; }
+    .progress-bar { height: 100%; width: 0%; background: #7c83ff; transition: width 0.2s; }
+
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+    .actions button { padding: 8px 18px; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; }
+    #btn-save { background: #7c83ff; color: #fff; }
+    #btn-save:hover { background: #6a70e8; }
+    #btn-reset { background: #2a2a4a; color: #b0b0cc; }
+    #btn-reset:hover { background: #3a3a5a; }
+
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #2ecc71; color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>AI Tab Grouper</h1>
+  <p class="subtitle">Groups your tabs by topic using Chrome's on-device AI. Everything runs locally.</p>
+
+  <!-- On-device AI -->
+  <div class="section">
+    <h2>On-device AI</h2>
+    <div class="field">
+      <div>
+        <label>Model status</label>
+        <div class="hint" id="ai-status-hint">Checking…</div>
+      </div>
+      <span id="ai-status-badge" class="badge">—</span>
+    </div>
+    <div class="field">
+      <div>
+        <label>Prepare model</label>
+        <div class="hint">Download the on-device model now (a few GB, Wi-Fi recommended) so grouping works instantly.</div>
+      </div>
+      <button id="btn-prepare">Prepare AI</button>
+    </div>
+    <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+  </div>
+
+  <!-- Grouping -->
+  <div class="section">
+    <h2>Grouping</h2>
+    <div class="field">
+      <div>
+        <label>Auto-group new tabs</label>
+        <div class="hint">Automatically place each new or navigated tab into a group as it loads.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="autoGroup"><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <div>
+        <label>Accordion (collapse inactive groups)</label>
+        <div class="hint">Automatically collapse a group as soon as you switch to a tab outside it; only the active group stays open.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="collapseInactive"><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <div>
+        <label>Respect manual groups</label>
+        <div class="hint">Never move or re-group tabs you placed in a group yourself (one the extension didn't create).</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="respectManualGroups"><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <div>
+        <label>Minimum group size</label>
+        <div class="hint">Don't create a topic group with fewer than this many tabs (1 = allow single-tab groups).</div>
+      </div>
+      <input type="number" id="minGroupSize" min="1" max="10">
+    </div>
+    <div class="field">
+      <div>
+        <label>Leftover group name</label>
+        <div class="hint">Tabs that don't reach the minimum size land here.</div>
+      </div>
+      <input type="text" class="inp" id="miscLabel" placeholder="Other">
+    </div>
+    <div class="field">
+      <div>
+        <label>Subdomained hosts</label>
+        <div class="hint"><b>Full subdomain</b> (default) groups internal hosts by their subdomain so the AI can't mislabel them; <b>Exact host</b> is stricter. <b>Let AI group them</b> hands these hosts to the model too. Advanced strategies via Import.</div>
+      </div>
+      <select id="subdomainStrategy">
+        <option value="subdomain">Full subdomain</option>
+        <option value="host">Exact host</option>
+        <option value="ai">Let AI group them</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Pinned rules -->
+  <div class="section">
+    <h2>Pinned Rules</h2>
+    <p style="font-size:12px;color:#6a6a8a">
+      Force certain URLs into a fixed group, bypassing the AI. One rule per line as
+      <code>match = Group Label</code>. The match can include a path for finer control.
+    </p>
+    <textarea id="pinnedRules" placeholder="atlassian.net/wiki = Confluence&#10;atlassian.net = Jira&#10;github.com = Code"></textarea>
+    <div class="textarea-hint">The left side is matched as a substring of the tab's hostname + path (case-insensitive). First match wins — list more specific rules first.</div>
+  </div>
+
+  <!-- Import / Export (runtime overrides) -->
+  <div class="section">
+    <h2>Import / Export</h2>
+    <p style="font-size:12px;color:#6a6a8a">
+      Apply an org/personal config at runtime (e.g. <code>examples/example.json</code>)
+      without changing the extension. <b>Import</b> merges the JSON below over your current
+      settings; <b>Export</b> dumps your current settings here.
+    </p>
+    <textarea id="config-json" placeholder='{ "pinnedRules": [ { "match": "atlassian.net", "label": "Jira" } ] }'></textarea>
+    <div class="actions" style="margin-top:10px">
+      <button id="btn-import" style="background:#7c83ff;color:#fff">Import (merge)</button>
+      <button id="btn-export" style="background:#2a2a4a;color:#b0b0cc">Export current</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="btn-save">Save Settings</button>
+    <button id="btn-reset">Reset to Defaults</button>
+  </div>
+
+  <div class="toast" id="toast">Settings saved!</div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>
