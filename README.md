@@ -14,13 +14,14 @@ tab titles and URLs never leave your machine.
   via Import); or `ai` to let the model group them too.
 - **Pinned rules** — force specific URLs into a fixed group, bypassing the AI.
   Matches against *hostname + path*, so rules can be path-specific.
-- **Manual or automatic** — by default grouping happens only when you ask
-  (Group all, a command, or a task capture); switch to automatic to group each
-  new tab as it loads.
+- **Automatic, project-based grouping** — by default new tabs auto-group, and
+  the AI groups by the project/task a tab supports rather than its generic topic.
+  Switch to manual if you'd rather only group on demand.
+- **Internal hosts stay deterministic** — hosts with a meaningful subdomain
+  group by `subdomainStrategy` and never go to the AI, so cluster/infra tabs are
+  unaffected by project grouping.
 - **Task groups** — capture the loose tabs into a named task group that stays
   put, or use the natural-language box ("group my tabs for the billing work").
-- **AI project mode** — bias AI grouping toward the project/task a tab supports
-  rather than its generic topic.
 - **Accordion** — collapse every group except the one you're in, automatically
   as you switch tabs or expand a group.
 - **Respect manual groups** — tabs you placed in your own group are left alone.
@@ -112,8 +113,8 @@ Company-specific config isn't baked into the extension. Apply it at runtime via
 
 | Setting | Default | Description |
 |---|---|---|
-| When to group | Manual | `manual` (only when you ask) or `auto` (as tabs load). |
-| AI groups by project/task | off | Bias AI labels toward work-streams, not generic topics. |
+| When to group | Automatic | `auto` (as tabs load) or `manual` (only when you ask). |
+| AI groups by project/task | on | Bias AI labels toward work-streams, not generic topics. |
 | Accordion | on | Collapse inactive groups as you switch tabs. |
 | Respect manual groups | on | Don't touch groups you created yourself. |
 | Minimum group size | 2 | Smallest AI-topic group before tabs go to "Other". |
