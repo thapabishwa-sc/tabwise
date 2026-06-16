@@ -1,5 +1,6 @@
 const fields = {
-  autoGroup: document.getElementById('autoGroup'),
+  groupingMode: document.getElementById('groupingMode'),
+  aiProjectMode: document.getElementById('aiProjectMode'),
   collapseInactive: document.getElementById('collapseInactive'),
   respectManualGroups: document.getElementById('respectManualGroups'),
   minGroupSize: document.getElementById('minGroupSize'),
@@ -21,7 +22,8 @@ const toast = document.getElementById('toast');
 
 async function loadSettings() {
   const s = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
-  fields.autoGroup.checked = s.autoGroup !== false;
+  fields.groupingMode.value = s.groupingMode === 'auto' ? 'auto' : 'manual';
+  fields.aiProjectMode.checked = !!s.aiProjectMode;
   fields.collapseInactive.checked = !!s.collapseInactive;
   fields.respectManualGroups.checked = s.respectManualGroups !== false;
   fields.minGroupSize.value = s.minGroupSize || 2;
@@ -62,7 +64,8 @@ function parseRules(text) {
 
 btnSave.addEventListener('click', async () => {
   const settings = {
-    autoGroup: fields.autoGroup.checked,
+    groupingMode: fields.groupingMode.value === 'auto' ? 'auto' : 'manual',
+    aiProjectMode: fields.aiProjectMode.checked,
     collapseInactive: fields.collapseInactive.checked,
     respectManualGroups: fields.respectManualGroups.checked,
     minGroupSize: Math.max(1, parseInt(fields.minGroupSize.value, 10) || 1),

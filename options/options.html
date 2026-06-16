@@ -91,10 +91,20 @@
     <h2>Grouping</h2>
     <div class="field">
       <div>
-        <label>Auto-group new tabs</label>
-        <div class="hint">Automatically place each new or navigated tab into a group as it loads.</div>
+        <label>When to group</label>
+        <div class="hint"><b>Manual</b> only groups when you click "Group all", run a command, or capture a task — tabs never move on their own. <b>Automatic</b> also groups each new tab as it loads.</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="autoGroup"><span class="slider"></span></label>
+      <select id="groupingMode">
+        <option value="manual">Manual (only when I ask)</option>
+        <option value="auto">Automatic (as tabs load)</option>
+      </select>
+    </div>
+    <div class="field">
+      <div>
+        <label>AI groups by project/task</label>
+        <div class="hint">When the AI groups, bias toward the project or task each tab supports (work-streams) rather than its generic topic.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="aiProjectMode"><span class="slider"></span></label>
     </div>
     <div class="field">
       <div>

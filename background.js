@@ -16,6 +16,7 @@ import {
   moveTab,
   moveGroupToWindow,
   organizeByInstruction,
+  captureTaskGroup,
   snapshotSession,
   restoreSession,
   isBusy,
@@ -46,7 +47,7 @@ async function processTabUpdate(tabId) {
   if (isBusy()) return;
   try {
     const settings = await getSettings();
-    if (!settings.autoGroup) return;
+    if (settings.groupingMode !== 'auto') return; // manual mode: don't auto-group
     await autoGroupTab(tabId);
   } catch {
     // Tab closed before we could process it
@@ -131,6 +132,9 @@ async function handleMessage(message) {
     case 'NL_GROUP':
       return await organizeByInstruction(message.instruction, message.windowId);
 
+    case 'TASK_GROUP':
+      return await captureTaskGroup(message.name, message.windowId);
+
     case 'GET_SESSIONS':
       return { sessions: await getSessions() };
 
@@ -190,7 +194,7 @@ async function handleMessage(message) {
 
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings();
-  if (settings.autoGroup) {
+  if (settings.groupingMode === 'auto') {
     // Group whatever is already open, once, on install.
     try { await organizeAllTabs(); } catch { /* AI may still be downloading */ }
   }

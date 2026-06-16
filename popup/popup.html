@@ -14,14 +14,14 @@
 
   <div class="toolbar">
     <button id="btn-organize" class="btn-primary" title="Group every tab by topic">Group all tabs</button>
-    <button id="btn-ungroup" class="btn-secondary" title="Remove all groups">Ungroup</button>
-    <button id="btn-nl-toggle" class="btn-icon" title="Group with a natural-language command">&#10024;</button>
+    <button id="btn-task" class="btn-secondary" title="Group the loose tabs into a named task">+ Task</button>
+    <button id="btn-ungroup" class="btn-icon" title="Remove all groups">⤫</button>
     <button id="btn-sessions" class="btn-icon" title="Saved sessions">&#128190;</button>
   </div>
 
-  <!-- Natural-language command (toggled) -->
-  <div class="nl-row" id="nl-row" style="display:none">
-    <input type="text" id="nl-input" placeholder="Tell AI how to group… (e.g. by project)">
+  <!-- Natural-language command -->
+  <div class="nl-row" id="nl-row">
+    <input type="text" id="nl-input" placeholder="Tell AI how to group… (e.g. by the task I'm on)">
     <button id="btn-nl">Go</button>
   </div>
 

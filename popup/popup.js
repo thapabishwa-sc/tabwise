@@ -12,10 +12,9 @@ const btnPrepareAi = document.getElementById('btn-prepare-ai');
 const aiProgressWrap = document.getElementById('ai-progress-wrap');
 const aiProgressBar = document.getElementById('ai-progress-bar');
 
-const nlRow = document.getElementById('nl-row');
-const btnNlToggle = document.getElementById('btn-nl-toggle');
 const nlInput = document.getElementById('nl-input');
 const btnNl = document.getElementById('btn-nl');
+const btnTask = document.getElementById('btn-task');
 const searchInput = document.getElementById('search');
 const btnSessions = document.getElementById('btn-sessions');
 const sessionsPanel = document.getElementById('sessions-panel');
@@ -304,15 +303,21 @@ async function runNlGroup() {
   await init();
 }
 
-btnNlToggle.addEventListener('click', () => {
-  const showing = nlRow.style.display !== 'none';
-  nlRow.style.display = showing ? 'none' : 'flex';
-  btnNlToggle.classList.toggle('active', !showing);
-  if (!showing) nlInput.focus();
-});
-
 btnNl.addEventListener('click', runNlGroup);
 nlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runNlGroup(); });
+
+// Capture the loose (ungrouped) tabs into a named task group.
+btnTask.addEventListener('click', async () => {
+  const name = (window.prompt('Name this task group:') || '').trim();
+  if (!name) return;
+  const res = await chrome.runtime.sendMessage({ type: 'TASK_GROUP', name });
+  if (res && res.grouped > 0) {
+    statusEl.textContent = `Grouped ${res.grouped} loose tab${res.grouped === 1 ? '' : 's'} into “${name}”.`;
+  } else {
+    statusEl.textContent = 'No ungrouped tabs to capture.';
+  }
+  await init();
+});
 
 // =============================================
 // SESSIONS
