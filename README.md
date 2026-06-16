@@ -88,6 +88,16 @@ match = Group Label
 `match` is matched as a case-insensitive substring of the tab's `hostname + path`.
 **First match wins**, so list more specific rules first.
 
+**Regex capture rules** (via Import) extract a dynamic label from the URL using a
+`pattern` and `$1`/`$2` references — e.g. group Jira by its project key:
+
+```json
+{ "pattern": "atlassian\\.net/browse/([A-Z][A-Z0-9]+)-", "label": "Jira: $1" }
+```
+
+So `…/browse/SASSC-6134` → group **Jira: SASSC**. Pattern rules are evaluated
+before substring rules.
+
 The core ships with **no pinned rules** — it's generic. Apply org/personal
 rules as a runtime override (see below), e.g.:
 

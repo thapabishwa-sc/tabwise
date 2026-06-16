@@ -2,6 +2,7 @@
   "subdomainStrategy": "prefix",
   "pinnedRules": [
     { "match": "atlassian.net/wiki", "label": "Confluence" },
+    { "pattern": "atlassian\\.net/browse/([A-Z][A-Z0-9]+)-", "label": "Jira: $1" },
     { "match": "atlassian.net", "label": "Jira" },
     { "match": "github.com", "label": "Code" },
     { "match": "bitbucket.org", "label": "Code" }

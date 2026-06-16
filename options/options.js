@@ -9,6 +9,10 @@ const fields = {
   pinnedRules: document.getElementById('pinnedRules'),
 };
 
+// Regex/capture pinned rules aren't editable in the textarea; we preserve them
+// across a Save so an imported Jira-style rule isn't lost.
+let advancedRules = [];
+
 const aiStatusHint = document.getElementById('ai-status-hint');
 const aiStatusBadge = document.getElementById('ai-status-badge');
 const btnPrepare = document.getElementById('btn-prepare');
@@ -39,7 +43,11 @@ async function loadSettings() {
     sel.appendChild(opt);
   }
   sel.value = strat;
-  fields.pinnedRules.value = (s.pinnedRules || [])
+  // Textarea manages only simple substring rules; keep pattern rules aside.
+  const allRules = s.pinnedRules || [];
+  advancedRules = allRules.filter(r => r.pattern);
+  fields.pinnedRules.value = allRules
+    .filter(r => !r.pattern && r.match)
     .map(r => `${r.match} = ${r.label}`)
     .join('\n');
   refreshAiStatus();
@@ -71,7 +79,8 @@ btnSave.addEventListener('click', async () => {
     minGroupSize: Math.max(1, parseInt(fields.minGroupSize.value, 10) || 1),
     miscLabel: fields.miscLabel.value.trim() || 'Other',
     subdomainStrategy: fields.subdomainStrategy.value,
-    pinnedRules: parseRules(fields.pinnedRules.value),
+    // Pattern rules first (more specific) so they win, then substring rules.
+    pinnedRules: [...advancedRules, ...parseRules(fields.pinnedRules.value)],
   };
   await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings });
   showToast('Settings saved!');
