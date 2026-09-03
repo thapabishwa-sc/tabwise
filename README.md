@@ -87,8 +87,11 @@ For each eligible tab (http/https, not pinned), the label is resolved in order:
 3. **Link trail** — if the tab was opened from another tab in the same window,
    it joins that tab's group. No AI call, so it lands correctly right away.
 4. **Task cluster + AI name** — remaining tabs are clustered by shared task key
-   (same Jira project, same repo, same document, same ticket in the title), and
-   the on-device model names each cluster after the work it serves.
+   (same ticket project, same repo, same document, same channel), and the
+   on-device model names each cluster after the work it serves. A tab carrying
+   two identities bridges them: a pull request titled `AUTH-482: fix token`
+   joins the repo's tabs to that ticket's tabs, because someone wrote that
+   ticket id into that title deliberately.
 
 Clustering happens *before* the model runs, so a cluster is an atom: the AI names
 it but can never split it, and a task assembled from a link trail survives.

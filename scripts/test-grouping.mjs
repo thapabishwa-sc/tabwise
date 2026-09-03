@@ -26,11 +26,11 @@ function check(name, actual, expected) {
 // --- Task signals: identity comes from the path, not the host ---------------
 
 check('jira issue → project key',
-  taskKey('https://acme.atlassian.net/browse/AUTH-482'), 'jira:AUTH');
+  taskKey('https://acme.atlassian.net/browse/AUTH-482'), 'ticket:AUTH');
 check('jira issues in one project share a key',
-  taskKey('https://acme.atlassian.net/browse/AUTH-495'), 'jira:AUTH');
+  taskKey('https://acme.atlassian.net/browse/AUTH-495'), 'ticket:AUTH');
 check('different jira project → different key',
-  taskKey('https://acme.atlassian.net/browse/BILL-12'), 'jira:BILL');
+  taskKey('https://acme.atlassian.net/browse/BILL-12'), 'ticket:BILL');
 check('confluence beats the jira matcher on the same host',
   taskKey('https://acme.atlassian.net/wiki/spaces/ENG/pages/9/Design'), 'wiki:ENG');
 check('github PR → repo key',
@@ -46,6 +46,37 @@ check('ticket key on an unrecognized host still counts',
   taskKey('https://wiki.internal.example/AUTH-482-rollout'), 'ticket:AUTH');
 check('plain page has no task key',
   taskKey('https://www.rfc-editor.org/rfc/rfc6749'), null);
+
+// Standards, encodings and formats look exactly like ticket keys. Treating them
+// as tasks would cluster unrelated tabs — every page mentioning UTF-8 together.
+for (const url of [
+  'https://example.com/download?charset=UTF-8',
+  'https://example.com/docs/UTF-8/intro',
+  'https://example.com/std/ISO-8601',
+  'https://example.com/a/SHA-256/b',
+  'https://example.com/p/COVID-19',
+  'https://example.com/rfc/RFC-6749',
+  'https://example.com/x/CVE-2024/y',
+]) {
+  check(`not a ticket: ${url.slice(20)}`, taskKey(url), null);
+}
+for (const title of ['UTF-8 encoding explained', 'COVID-19 dashboard', 'ISO-8601 date format']) {
+  check(`not a ticket title: ${title}`, titleTaskKey(title), null);
+}
+check('a real ticket on an unknown host still reads',
+  taskKey('https://wiki.internal.example/AUTH-482-rollout'), 'ticket:AUTH');
+check('one-digit ticket is trusted on a recognized platform',
+  taskKey('https://acme.atlassian.net/browse/PROJ-7'), 'ticket:PROJ');
+check('one-digit ticket is not trusted on an unknown host',
+  taskKey('https://random.example/PROJ-7'), null);
+
+// GitHub/GitLab Pages paths are page routes, not owner/repo.
+check('github pages is not a repo',
+  taskKey('https://bishwa.github.io/myproject/page'), null);
+check('gitlab pages is not a repo',
+  taskKey('https://acme.gitlab.io/site/docs'), null);
+check('self-hosted gitlab is still a repo',
+  taskKey('https://gitlab.mycompany.com/grp/api/-/issues/3'), 'repo:grp/api');
 check('ticket key read from a title',
   titleTaskKey('AUTH-482: rotate signing keys'), 'ticket:AUTH');
 check('search query becomes a prompt hint',
@@ -74,12 +105,32 @@ check('opener lineage can be disabled',
 check('a cluster spanning two work items is left for the AI to name',
   clusters[0].key, null);
 check('a single-key cluster reports its key',
-  clusterTabs([authTabs[0], authTabs[1]])[0].key, 'jira:AUTH');
+  clusterTabs([authTabs[0], authTabs[1]])[0].key, 'ticket:AUTH');
 check('an opener pointing outside the pass is ignored',
   clusterTabs([{ id: 9, title: 'x', url: 'https://example.com/a', openerTabId: 999 }]).length, 1);
 
+// A tab carrying two identities bridges their clusters. A PR titled with its
+// ticket id is a deliberate statement about which work the change belongs to.
+const bridged = clusterTabs([
+  { id: 1, title: 'Auth migration rollout', url: 'https://acme.atlassian.net/browse/AUTH-482' },
+  { id: 2, title: 'Rotate signing keys', url: 'https://acme.atlassian.net/browse/AUTH-495' },
+  { id: 3, title: 'AUTH-482: fix token refresh', url: 'https://github.com/acme/gateway/pull/1203' },
+  { id: 4, title: 'gateway/src/auth/token.go', url: 'https://github.com/acme/gateway/blob/main/a.go' },
+  { id: 5, title: 'Q3 budget', url: 'https://docs.google.com/spreadsheets/d/x/edit' },
+]);
+check('a PR titled with its ticket joins the repo to the ticket',
+  bridged[0].tabs.map(t => t.id), [1, 2, 3, 4]);
+check('unrelated work is still separate', bridged[1].tabs.map(t => t.id), [5]);
+check('a cluster spanning two identities is named by the AI', bridged[0].key, null);
+check('an unrelated repo is not dragged in',
+  clusterTabs([
+    { id: 1, title: 'Auth migration', url: 'https://acme.atlassian.net/browse/AUTH-482' },
+    { id: 2, title: 'AUTH-482: fix token', url: 'https://github.com/acme/gateway/pull/1203' },
+    { id: 3, title: 'Update README', url: 'https://github.com/acme/website/pull/9' },
+  ]).map(c => c.tabs.map(t => t.id)), [[1, 2], [3]]);
+
 check('repo key → readable label', labelForKey('repo:acme/gateway'), 'gateway');
-check('jira key → readable label', labelForKey('jira:AUTH'), 'AUTH');
+check('ticket key → readable label', labelForKey('ticket:AUTH'), 'AUTH');
 check('opaque ids make poor labels', labelForKey('gdoc:abc123'), null);
 
 // --- Internal hosts stay deterministic; SaaS hosts do not ------------------
