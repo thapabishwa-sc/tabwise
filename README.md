@@ -25,11 +25,12 @@ group or drag a tab, and that correction sticks.
   referred to, which is the one job a group name has. Names are two words read
   from the tab titles, and an id-shaped answer from the model is rejected and
   replaced ([`lib/summarize.js`](lib/summarize.js)).
-- **Task signals from the URL** — ticket keys, pull requests, document ids, wiki
-  spaces and channel ids are read out of the path
-  ([`lib/taskSignal.js`](lib/taskSignal.js)) and given to the model. Without
-  them the hostname is the only shared feature between tabs, which is why
-  hostname grouping used to be all you got.
+- **A context engine, not a list of websites** — relatedness is scored from
+  shared identifiers, containers and subject matter, each weighted by how rare
+  it is across your open tabs ([`lib/context.js`](lib/context.js)). The same
+  feature is an identity in one window and a container in another, which is
+  something no per-site rule can express — and it means an in-house tracker
+  works as well as Jira. See [how two tabs are judged related](#how-two-tabs-are-judged-related).
 - **Work items vs. containers** — a ticket or a pull request is one piece of
   work; a repository, a Jira project or a Slack channel is a place many
   unrelated pieces of work live. Only the former groups tabs on its own, so
@@ -127,18 +128,64 @@ but can never split it, and a task assembled from a link trail survives. Names
 are then consolidated, merging drift like "Auth Migration" vs "Auth Migrations"
 that batching would otherwise turn into two groups.
 
-Two tabs are the same task when one was opened from the other, or when they
-share a **work item** — the same ticket, pull request or document. A tab can
-carry two work items at once, and that is what bridges platforms: a pull request
-titled `AUTH-482: fix token` joins the repo's tabs to that ticket's tabs,
-because someone wrote that ticket id into that title deliberately.
+## How two tabs are judged related
 
-A **container** — a repository, a Jira project, a wiki space, a Slack channel —
-is not a work item, and cannot group tabs on its own. Three tickets touching one
-monorepo are three tasks. A container only adopts tabs that have no work item of
-their own: a source file next to the single pull request touching its repo joins
-that pull request, but if three pull requests touch the repo, the file belongs to
-no one in particular and stays with the other loose files.
+There is no list of websites. Deciding whether two tabs are the same work is a
+measurement, made by the context engine in [`lib/context.js`](lib/context.js).
+
+Each tab is reduced to plain features — its host, its cumulative path prefixes,
+the identifiers in its URL and title, its distinctive title words — and each
+shared feature is weighted by **how rare it is across the tabs you actually have
+open**:
+
+```
+a path prefix shared by 2 tabs out of 40   →  names one piece of work
+the same prefix shared by 20 tabs          →  names a container
+```
+
+That is the important part. `atlassian.net/browse` is a container when eight
+tickets are open and an identity when one is — which is correct, and which no
+static rule can express. It also means a team on Shortcut, Azure DevOps, Redmine
+or an in-house tracker gets exactly the same treatment as a team on Jira.
+
+Evidence is sorted into three kinds, because they mean different things:
+
+| Evidence | Example | What it proves |
+|---|---|---|
+| **Identity** | the same ticket reference, generated document id, or numbered item | The two tabs are about the same thing. Decisive. |
+| **Subject** | distinctive words shared between titles | They are about the same topic. Strong. |
+| **Container** | a shared path prefix or host | They live in the same place. Weak, and misleading between two tabs that each name their own work. |
+
+So: sharing an identity always joins. Sharing only a container joins **only** if
+at least one side has no identity of its own — a source file beside the single
+pull request touching its repo is adopted by it, but three pull requests in one
+repository stay three tasks, and the loose files stay with each other rather
+than being dragged into whichever was compared first. Sharing subject matter
+joins regardless, which is what lets a ticket group with the wiki page
+documenting it while staying apart from the next ticket in the same tracker.
+
+Two structural details do a lot of work:
+
+- **Interior path segments name containers; the leaf names content.** In
+  `github.com/acme/monorepo/pull/500` the word "monorepo" is interior, so two
+  pull requests repeating it in their titles are siblings. In
+  `/pages/2758606863/NG-SaaS-onboarding` the word "onboarding" is in the leaf,
+  so it is what the page is about. Pull request titles end with their repository
+  name, and without this distinction a repository name reads as subject matter
+  and merges every ticket in the repo.
+- **A path ending in a bare number is item N of its container.** The only thing
+  telling `/pull/1` from `/pull/2` apart is the number, so it counts as an
+  identity despite being far too short to look like one.
+
+A tab opened from another tab (`openerTabId`) is joined outright, ahead of all
+of this. Following a link from a ticket to its pull request is the most reliable
+"same work" signal a browser offers, and it costs nothing.
+
+The per-site knowledge that remains — that `/browse/AUTH-482` is a Jira issue —
+lives in [`lib/taskSignal.js`](lib/taskSignal.js) and is used for **one thing**:
+phrasing a hint for the model, so its prompt reads `[task: jira AUTH-482]`
+rather than `[task: browse AUTH-482]`. A missing matcher there costs a slightly
+worse hint, never a worse grouping.
 
 Groups smaller than **Minimum group size** fall into the **Other** bucket.
 Pinned groups, internal-host groups, learned tasks and clusters built on a real
@@ -168,6 +215,7 @@ any of it, under **Settings → What it has learned**.
 ```bash
 node scripts/bench.mjs            # score every fixture
 node scripts/bench.mjs --verbose  # per-tab detail: gold, predicted, and why
+node scripts/bench.mjs --tune     # sweep the relatedness threshold
 ```
 
 Grouping quality is the whole product, so it is a number rather than a vibe.
@@ -199,8 +247,13 @@ Current state:
 The on-device model is not available to the benchmark, so cold scores are a
 **floor**: precision at 1.00 across every fixture means the deterministic layer
 never invents a merge, and every remaining error is a merge the model (or one
-correction from you) has to make. Both remaining gaps are genuinely semantic —
+correction from you) has to make. The remaining gap is genuinely semantic —
 whether `AUTH-482` and `AUTH-495` are one effort cannot be read off a URL.
+
+The engine's constants were chosen against these fixtures, so `--tune` sweeps
+the relatedness threshold to check none of them is balanced on a knife edge.
+Scores hold flat from 0.3 to 0.8, which says the *ranking* of the signals is
+doing the work rather than a number fitted to seven examples.
 
 ## Pinned rules
 
@@ -273,8 +326,9 @@ Keyboard shortcut: **Alt+Shift+G** — group all tabs now.
 manifest.json        # MV3 manifest (permissions: tabs, tabGroups, storage)
 background.js        # service worker: events, accordion, message routing
 lib/resolve.js       # the grouping pipeline, pure and benchmarkable
-lib/taskSignal.js    # reads work items + containers out of a URL
-lib/affinity.js      # clusters tabs by link trail + shared work item
+lib/context.js       # scores how related any two tabs are, with no site rules
+lib/affinity.js      # turns those pairwise scores into clusters
+lib/taskSignal.js    # per-site knowledge, used only to phrase AI prompt hints
 lib/taskMemory.js    # what it has learned: your names, your pins, task profiles
 lib/summarize.js     # names a group after the work, in two words
 lib/aiGrouper.js     # Prompt API wrapper (availability, cluster naming, NL, download)

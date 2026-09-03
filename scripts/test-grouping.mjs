@@ -18,6 +18,7 @@ import {
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
 import { resolveGroups } from '../lib/resolve.js';
+import { buildContext, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
 const failures = [];
@@ -110,10 +111,18 @@ check('cluster count', clusters.length, 3);
 check('opener lineage can be disabled',
   clusterTabs(authTabs, { useOpeners: false }).length, 5);
 
-check('a cluster spanning several work items is left for the AI to name',
-  clusters[0].key, null);
-check('a single-work-item cluster reports its key',
-  clusterTabs([authTabs[0], authTabs[2]])[0].key, null);
+// A cluster's key is the one piece of work it is about, if there is exactly
+// one. Pull requests and documents are identified by their full path rather
+// than by an extracted reference, so they do not compete for the naming.
+check('a cluster about one work item reports it',
+  clusters[0].key, 'ticket:AUTH-482');
+check('a ticket and its pull request are one work item',
+  clusterTabs([authTabs[0], authTabs[2]])[0].key, 'ticket:AUTH-482');
+check('a cluster spanning two work items is left for the AI to name',
+  clusterTabs([
+    { id: 1, title: 'WEB-101 login redirect', url: 'https://acme.atlassian.net/browse/WEB-101' },
+    { id: 2, title: 'WEB-101 and SEARCH-9 rollup', url: 'https://acme.atlassian.net/browse/SEARCH-9' },
+  ])[0].key, null);
 check('two tabs of the same ticket share one key',
   clusterTabs([
     { id: 1, title: 'AUTH-482 rollout', url: 'https://acme.atlassian.net/browse/AUTH-482' },
@@ -261,6 +270,78 @@ check('genuinely different labels are not merged',
     [1, 'Budget'], [2, 'Budget Review'], [3, 'Q3 Budget'],
   ])).values()],
   ['Budget', 'Budget Review', 'Q3 Budget']);
+
+// --- The context engine works without knowing the site ---------------------
+
+// The point of scoring rather than matching: a tracker and a wiki nobody wrote
+// a rule for behave exactly like Jira and Confluence.
+check('an unknown tracker still bridges a ticket to its review',
+  clusterTabs([
+    { id: 1, title: 'PLAT-88 nightly import times out', url: 'https://tracker.acme-internal.dev/task/PLAT-88' },
+    { id: 2, title: 'PLAT-88: retry the import in batches', url: 'https://code.acme-internal.dev/r/proj/importer/change/9912' },
+    { id: 3, title: 'Espresso machine descaling rota', url: 'https://wiki.acme-internal.dev/page/office/espresso-rota' },
+  ]).map(c => c.tabs.map(t => t.id)), [[1, 2], [3]]);
+
+check('an unknown wiki page joins the ticket it documents, by subject',
+  clusterTabs([
+    { id: 1, title: 'PLAT-88 nightly import times out', url: 'https://tracker.acme-internal.dev/task/PLAT-88' },
+    { id: 2, title: 'Nightly import runbook', url: 'https://wiki.acme-internal.dev/page/ops/nightly-import-runbook' },
+  ]).map(c => c.tabs.map(t => t.id)), [[1, 2]]);
+
+check('two tickets on an unknown tracker stay apart',
+  clusterTabs([
+    { id: 1, title: 'PLAT-88 nightly import times out', url: 'https://tracker.acme-internal.dev/task/PLAT-88' },
+    { id: 2, title: 'PLAT-91 dashboard legend overlaps', url: 'https://tracker.acme-internal.dev/task/PLAT-91' },
+  ]).map(c => c.tabs.map(t => t.id)), [[1], [2]]);
+
+// Identifiers a tab carries are absolute — no dependence on what else is open,
+// which is what makes them safe for task memory to persist.
+check('a reference is an identity',
+  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/thing/PLAT-88' }), ['ref:PLAT-88']);
+check('a standard is not an identity',
+  identitiesOf({ id: 1, title: 'UTF-8 notes', url: 'https://any.host/d?charset=UTF-8' }), []);
+check('a generated id is an identity',
+  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/pages/2758606863/thing' }), ['opaque:2758606863']);
+check('a readable slug is not an identity',
+  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/docs/getting-started-2' }), []);
+check('namesWork reflects that', namesWork({ id: 1, title: 'PLAT-88 x', url: 'https://a.b/c' }), true);
+
+{
+  // Rarity is measured over the tabs actually open, which is how one feature
+  // can be an identity in one window and a container in another.
+  const alone = buildContext([
+    { id: 1, title: 'Import times out', url: 'https://tracker.acme.dev/task/PLAT-88' },
+    { id: 2, title: 'Retry in batches', url: 'https://tracker.acme.dev/task/PLAT-88/comments' },
+  ]);
+  check('a path shared by two tabs is an identity',
+    alone.relate(1, 2).related, true);
+
+  const crowded = buildContext([
+    { id: 1, title: 'Import times out', url: 'https://tracker.acme.dev/task/PLAT-88' },
+    { id: 2, title: 'Legend overlaps', url: 'https://tracker.acme.dev/task/PLAT-91' },
+    { id: 3, title: 'Slow query', url: 'https://tracker.acme.dev/task/PLAT-95' },
+    { id: 4, title: 'Broken link', url: 'https://tracker.acme.dev/task/PLAT-99' },
+  ]);
+  check('the same path shared by many tabs is only a container',
+    crowded.relate(1, 2).related, false);
+}
+
+{
+  // The scoring split, which is what stops "same place" reading as "same work".
+  const ctx = buildContext([
+    { id: 1, title: 'AUTH-482 rollout', url: 'https://acme.atlassian.net/browse/AUTH-482' },
+    { id: 2, title: 'AUTH-482: fix token', url: 'https://github.com/acme/gateway/pull/1203' },
+    { id: 3, title: 'BILL-9 invoice mismatch', url: 'https://acme.atlassian.net/browse/BILL-9' },
+  ]);
+  check('a shared reference is identity evidence', ctx.relate(1, 2).basis, 'identity');
+  check('siblings in a tracker are not related', ctx.relate(1, 3).related, false);
+}
+
+check('an interior path segment names a container, a leaf names content',
+  clusterTabs([
+    { id: 1, title: 'Fix upload · Pull Request #1 · acme/monorepo', url: 'https://github.com/acme/monorepo/pull/1' },
+    { id: 2, title: 'Fix login · Pull Request #2 · acme/monorepo', url: 'https://github.com/acme/monorepo/pull/2' },
+  ]).map(c => c.tabs.map(t => t.id)), [[1], [2]]);
 
 // --- Learning: corrections have to stick ------------------------------------
 

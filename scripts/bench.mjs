@@ -4,6 +4,7 @@
  *   node scripts/bench.mjs                 # score every fixture
  *   node scripts/bench.mjs auth-migration  # one fixture, with a per-tab table
  *   node scripts/bench.mjs --verbose       # per-tab detail for all
+ *   node scripts/bench.mjs --tune          # sweep the relatedness threshold
  *
  * Runs the real pipeline (lib/resolve.js) over recorded tab sets in
  * scripts/fixtures/ and scores it against hand-labelled correct groupings.
@@ -106,7 +107,7 @@ function bar(v, width = 12) {
   return '█'.repeat(n) + '░'.repeat(width - n);
 }
 
-async function runFixture(file, { verbose }) {
+async function runFixture(file, { verbose, threshold }) {
   const fx = JSON.parse(readFileSync(join(FIXTURE_DIR, file), 'utf8'));
   const tabs = fx.tabs.map((t) => ({
     id: t.id,
@@ -130,7 +131,10 @@ async function runFixture(file, { verbose }) {
 
   // No nameClusters: the model is unavailable here, so names come from titles.
   const run = async (memory) => {
-    const { assignments } = await resolveGroups(tabs, { settings, memory });
+    const { assignments } = await resolveGroups(tabs, {
+      settings: threshold == null ? settings : { ...settings, relatedThreshold: threshold },
+      memory,
+    });
     return assignments;
   };
 
@@ -191,6 +195,7 @@ function sameCluster(goldTabs, predicted, tab) {
 
 const args = process.argv.slice(2);
 const verbose = args.includes('--verbose');
+const tune = args.includes('--tune');
 const only = args.filter((a) => !a.startsWith('--'));
 
 const files = readdirSync(FIXTURE_DIR)
@@ -200,6 +205,24 @@ const files = readdirSync(FIXTURE_DIR)
 if (files.length === 0) {
   console.error(`No fixtures matched. Available: ${readdirSync(FIXTURE_DIR).join(', ')}`);
   process.exit(1);
+}
+
+if (tune) {
+  // The constants in lib/context.js were chosen against these fixtures, so the
+  // question that matters is not "what is the best score" but "is the setting
+  // sitting on a knife edge". A plateau means the ranking of signals is doing
+  // the work; a single spike means the number was fitted to the fixtures.
+  console.log(`\n  threshold   F1      per-fixture`);
+  console.log(`  ${'-'.repeat(64)}`);
+  for (const th of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.3]) {
+    const rs = [];
+    for (const f of files) rs.push(await runFixture(f, { verbose: false, threshold: th }));
+    const m = rs.reduce((a, r) => a + r.grouping.f1, 0) / rs.length;
+    const marks = rs.map((r) => (r.grouping.f1 >= 0.99 ? '✓' : r.grouping.f1 >= 0.8 ? '·' : '✗')).join(' ');
+    console.log(`  ${String(th).padEnd(11)} ${m.toFixed(3)}   ${marks}`);
+  }
+  console.log(`\n  ${' '.repeat(21)}${files.map((f) => f[0]).join(' ')}   (fixture initials)\n`);
+  process.exit(0);
 }
 
 const results = [];

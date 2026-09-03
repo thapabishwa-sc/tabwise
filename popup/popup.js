@@ -168,7 +168,8 @@ function relativeTime(ts) {
  */
 const VIA_TEXT = {
   trail: 'link trail',
-  key: 'same item',
+  key: 'same work item',
+  topic: 'same subject',
   alone: '',
 };
 
