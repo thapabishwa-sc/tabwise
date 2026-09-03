@@ -5,7 +5,10 @@ const fields = {
   respectManualGroups: document.getElementById('respectManualGroups'),
   minGroupSize: document.getElementById('minGroupSize'),
   miscLabel: document.getElementById('miscLabel'),
+  useOpenerAffinity: document.getElementById('useOpenerAffinity'),
   subdomainStrategy: document.getElementById('subdomainStrategy'),
+  subdomainScope: document.getElementById('subdomainScope'),
+  internalDomains: document.getElementById('internalDomains'),
   pinnedRules: document.getElementById('pinnedRules'),
 };
 
@@ -29,6 +32,7 @@ async function loadSettings() {
   fields.groupingMode.value = s.groupingMode === 'auto' ? 'auto' : 'manual';
   fields.aiProjectMode.checked = !!s.aiProjectMode;
   fields.collapseInactive.checked = !!s.collapseInactive;
+  fields.useOpenerAffinity.checked = s.useOpenerAffinity !== false;
   fields.respectManualGroups.checked = s.respectManualGroups !== false;
   fields.minGroupSize.value = s.minGroupSize || 2;
   fields.miscLabel.value = s.miscLabel || 'Other';
@@ -43,6 +47,8 @@ async function loadSettings() {
     sel.appendChild(opt);
   }
   sel.value = strat;
+  fields.subdomainScope.value = s.subdomainScope === 'all' ? 'all' : 'internal';
+  fields.internalDomains.value = (s.internalDomains || []).join('\n');
   // Textarea manages only simple substring rules; keep pattern rules aside.
   const allRules = s.pinnedRules || [];
   advancedRules = allRules.filter(r => r.pattern);
@@ -54,6 +60,14 @@ async function loadSettings() {
 }
 
 // --- Save ---
+
+/** Split a textarea into trimmed, non-empty, lowercased lines. */
+function parseLines(text) {
+  return (text || '')
+    .split('\n')
+    .map(l => l.trim().toLowerCase().replace(/^\.+/, ''))
+    .filter(Boolean);
+}
 
 function parseRules(text) {
   return text
@@ -78,7 +92,10 @@ btnSave.addEventListener('click', async () => {
     respectManualGroups: fields.respectManualGroups.checked,
     minGroupSize: Math.max(1, parseInt(fields.minGroupSize.value, 10) || 1),
     miscLabel: fields.miscLabel.value.trim() || 'Other',
+    useOpenerAffinity: fields.useOpenerAffinity.checked,
     subdomainStrategy: fields.subdomainStrategy.value,
+    subdomainScope: fields.subdomainScope.value === 'all' ? 'all' : 'internal',
+    internalDomains: parseLines(fields.internalDomains.value),
     // Pattern rules first (more specific) so they win, then substring rules.
     pinnedRules: [...advancedRules, ...parseRules(fields.pinnedRules.value)],
   };
@@ -116,7 +133,12 @@ btnImport.addEventListener('click', async () => {
     showToast('Expected a settings object.');
     return;
   }
-  await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: parsed });
+  // Keys starting with '_' are comments (see examples/example.json) — drop them
+  // so they aren't persisted as settings and echoed back out by Export.
+  const settings = Object.fromEntries(
+    Object.entries(parsed).filter(([k]) => !k.startsWith('_')),
+  );
+  await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings });
   await loadSettings();
   showToast('Imported settings.');
 });

@@ -42,6 +42,9 @@
       font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; resize: vertical; margin-top: 8px; outline: none;
     }
     textarea:focus { border-color: #7c83ff; }
+    /* A textarea sitting in a flex .field row must not stretch like the
+       full-width ones in the sections below. */
+    .field textarea { width: 220px; min-height: 58px; margin-top: 0; flex: 0 0 auto; }
     .textarea-hint { font-size: 11px; color: #6a6a8a; margin-top: 4px; }
     code { color: #7c83ff; }
 
@@ -102,9 +105,16 @@
     <div class="field">
       <div>
         <label>AI groups by project/task</label>
-        <div class="hint">When the AI groups, bias toward the project or task each tab supports (work-streams) rather than its generic topic.</div>
+        <div class="hint">When the AI names groups, bias toward the project or task each tab supports (work-streams) rather than its generic topic.</div>
       </div>
       <label class="toggle"><input type="checkbox" id="aiProjectMode"><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <div>
+        <label>Follow link trails</label>
+        <div class="hint">A tab opened from another tab joins that tab's group right away — following a link from a ticket to its pull request keeps them together. The most reliable "same work" signal there is, and it needs no AI call. Turn off to classify every new tab from scratch.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="useOpenerAffinity"><span class="slider"></span></label>
     </div>
     <div class="field">
       <div>
@@ -123,7 +133,7 @@
     <div class="field">
       <div>
         <label>Minimum group size</label>
-        <div class="hint">Don't create a topic group with fewer than this many tabs (1 = allow single-tab groups).</div>
+        <div class="hint">Don't create a group with fewer than this many tabs (1 = allow single-tab groups). Tabs that name a real work item — a ticket, a repo, a document — may still start their own group.</div>
       </div>
       <input type="number" id="minGroupSize" min="1" max="10">
     </div>
@@ -136,8 +146,25 @@
     </div>
     <div class="field">
       <div>
-        <label>Subdomained hosts</label>
-        <div class="hint"><b>Full subdomain</b> (default) groups internal hosts by their subdomain so the AI can't mislabel them; <b>Exact host</b> is stricter. <b>Let AI group them</b> hands these hosts to the model too. Advanced strategies via Import.</div>
+        <label>Group by host instead of task</label>
+        <div class="hint"><b>Internal hosts only</b> (default) keeps deterministic per-host groups for infrastructure — private domains, bare or IP hosts, and dashed cluster names like <code>prod-eu-1-grafana</code> — so two clusters never merge. Everything else is grouped by task, so a design doc and a budget sheet on the same <code>docs.google.com</code> land in different groups. <b>Any host with a subdomain</b> restores the older behavior, where any subdomain becomes its own group.</div>
+      </div>
+      <select id="subdomainScope">
+        <option value="internal">Internal hosts only</option>
+        <option value="all">Any host with a subdomain</option>
+      </select>
+    </div>
+    <div class="field">
+      <div>
+        <label>Internal domains</label>
+        <div class="hint">Domain suffixes to always treat as internal infrastructure, one per line (e.g. <code>corp.acme.com</code>). Use this when your internal hosts don't follow a recognizable convention.</div>
+      </div>
+      <textarea id="internalDomains" rows="3" placeholder="corp.acme.com&#10;acme.internal"></textarea>
+    </div>
+    <div class="field">
+      <div>
+        <label>Internal host labels</label>
+        <div class="hint">How the hosts above are named: <b>Full subdomain</b> (default), <b>Exact host</b> (strictest), or <b>Let AI group them</b>. Advanced strategies via Import.</div>
       </div>
       <select id="subdomainStrategy">
         <option value="subdomain">Full subdomain</option>

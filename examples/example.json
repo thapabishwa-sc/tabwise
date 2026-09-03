@@ -1,10 +1,18 @@
 {
+  "_comment": "Runtime config applied via Settings → Import. Merges over your current settings.",
+
+  "_internalDomains": "Hosts under these suffixes are infrastructure: they keep deterministic per-subdomain groups and never go to the AI, so two clusters are never merged by topic.",
+  "internalDomains": [
+    "corp.example.com",
+    "example.internal"
+  ],
+  "subdomainScope": "internal",
   "subdomainStrategy": "prefix",
+
+  "_pinnedRules": "Force specific URLs into a fixed group. Prefer TASK-shaped rules (capture the project/ticket key) over host-shaped ones — a rule like 'github.com = Code' recreates the hostname grouping that task grouping exists to avoid. First match wins, so list specific rules first.",
   "pinnedRules": [
-    { "match": "atlassian.net/wiki", "label": "Confluence" },
     { "pattern": "atlassian\\.net/browse/([A-Z][A-Z0-9]+)-", "label": "Jira: $1" },
-    { "match": "atlassian.net", "label": "Jira" },
-    { "match": "github.com", "label": "Code" },
-    { "match": "bitbucket.org", "label": "Code" }
+    { "pattern": "atlassian\\.net/wiki/spaces/([A-Z0-9]+)/", "label": "Wiki: $1" },
+    { "pattern": "github\\.com/[^/]+/([^/]+)", "label": "Repo: $1" }
   ]
 }
