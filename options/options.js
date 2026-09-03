@@ -144,14 +144,23 @@ function renderMemory(tasks) {
     }
 
     // What this task is recognized by, so a bad match is diagnosable.
+    // Identifiers first — they are what actually settles a match.
     const facts = document.createElement('span');
     facts.className = 'mem-facts';
+    const shown = { id: [], word: [], place: [] };
+    for (const key of t.features || []) {
+      const kind = key.slice(0, key.indexOf(':'));
+      const value = key.slice(key.indexOf(':') + 1);
+      if (kind === 'ref' || kind === 'opaque' || kind === 'item') shown.id.push(value);
+      else if (kind === 'word') shown.word.push(value);
+      else shown.place.push(value);
+    }
     const bits = [];
-    if (t.keys && t.keys.length) bits.push(t.keys.join(', '));
-    if (t.hosts && t.hosts.length) bits.push(t.hosts.slice(0, 3).join(', '));
-    if (t.tokens && t.tokens.length) bits.push(t.tokens.slice(0, 5).join(' '));
+    if (shown.id.length) bits.push(shown.id.slice(0, 4).join(', '));
+    if (shown.word.length) bits.push(shown.word.slice(0, 6).join(' '));
+    if (shown.place.length) bits.push(shown.place.slice(0, 2).join(', '));
     facts.textContent = bits.join('  ·  ') || 'no signals yet';
-    facts.title = facts.textContent;
+    facts.title = (t.features || []).join('\n') || 'no signals yet';
     row.appendChild(facts);
 
     const forget = document.createElement('button');

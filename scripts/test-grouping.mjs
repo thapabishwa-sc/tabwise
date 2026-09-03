@@ -17,7 +17,7 @@ import {
   emptyMemory, observe, learnRename, learnMove, forgetTask,
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
-import { resolveGroups } from '../lib/resolve.js';
+import { resolveGroups, relatedGroupFor } from '../lib/resolve.js';
 import { buildContext, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
@@ -343,6 +343,40 @@ check('an interior path segment names a container, a leaf names content',
     { id: 2, title: 'Fix login · Pull Request #2 · acme/monorepo', url: 'https://github.com/acme/monorepo/pull/2' },
   ]).map(c => c.tabs.map(t => t.id)), [[1], [2]]);
 
+// --- A tab arriving alone can still find its group -------------------------
+
+// A full pass clusters everything at once. A single new tab has no such view,
+// so without this it could only be placed by a rule, by memory, or by the
+// model — and a tab plainly belonging with what is on screen would wait for
+// the next batch.
+{
+  const open = [
+    { id: 1, title: 'AUTH-482 auth migration rollout', url: 'https://acme.atlassian.net/browse/AUTH-482', group: 'Auth Migration' },
+    { id: 2, title: 'AUTH-482: fix token refresh', url: 'https://github.com/acme/gateway/pull/1203', group: 'Auth Migration' },
+    { id: 3, title: 'Q3 budget planning', url: 'https://docs.google.com/spreadsheets/d/q3budget2026/edit', group: 'Q3 Budget' },
+    { id: 4, title: 'Loose unrelated tab', url: 'https://example.com/nothing', group: '' },
+  ];
+  const arriving = (title, url) => relatedGroupFor({ id: 9, title, url }, open);
+
+  const sameTicket = arriving('AUTH-482 rollback plan', 'https://acme.atlassian.net/browse/AUTH-482?tab=comments');
+  check('a tab on the same ticket joins that group', sameTicket && sameTicket.label, 'Auth Migration');
+  check('and says it was the work item', sameTicket && sameTicket.via, 'key');
+
+  const sameSubject = arriving('OAuth token refresh notes', 'https://www.rfc-editor.org/rfc/rfc6749');
+  check('a tab on the same subject joins that group', sameSubject && sameSubject.label, 'Auth Migration');
+  check('and says it was the subject', sameSubject && sameSubject.via, 'topic');
+
+  check('the right group wins when several are open',
+    (arriving('Q3 budget vendor invoice', 'https://mail.google.com/mail/u/0/#x') || {}).label, 'Q3 Budget');
+  check('an unrelated tab joins nothing',
+    arriving('Best headphones 2026', 'https://www.nytimes.com/wirecutter/x/'), null);
+  check('a loose tab is not a group to join',
+    arriving('Nothing at all here', 'https://example.com/nothing-else'), null);
+  check('with no groups open there is nothing to join',
+    relatedGroupFor({ id: 9, title: 'x', url: 'https://acme.atlassian.net/browse/AUTH-482' },
+      [{ id: 1, title: 'y', url: 'https://acme.atlassian.net/browse/AUTH-482', group: '' }]), null);
+}
+
 // --- Learning: corrections have to stick ------------------------------------
 
 const authGroup = [
@@ -361,6 +395,10 @@ const authGroup = [
   check('your name is marked as yours', listTasks(m)[0].userNamed, true);
   check('the profile carries over, so the task is still recognized',
     recallForTabs(m, [authGroup[0]]).label, 'SSO Work');
+  check('the profile is stored in the engine feature vocabulary',
+    listTasks(m)[0].features.some((f) => f === 'ref:AUTH-482'), true);
+  check('container words are not remembered as subject matter',
+    listTasks(m)[0].features.includes('word:gateway'), false);
 
   // A new tab of the same work is recognized without the AI.
   check('a later tab of the same ticket recalls your name',

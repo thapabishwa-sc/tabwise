@@ -119,7 +119,11 @@ the group is resolved in order of authority:
    tab's group. No AI call, so it lands correctly right away.
 5. **A task you've grouped before** — matched on its work items and vocabulary,
    and named with the name you gave it.
-6. **Task cluster, named** — everything left is clustered by shared work item,
+6. **A group already on screen** — the context engine scores this tab against
+   the tabs in every existing group; the best match above threshold takes it.
+   This is what a batch pass gets for free by seeing every tab at once, and
+   what a tab arriving on its own would otherwise miss until the next batch.
+7. **Task cluster, named** — everything left is clustered by shared work item,
    then named by the on-device model, or from the tabs' own titles when the
    model is unavailable.
 
@@ -192,6 +196,31 @@ Pinned groups, internal-host groups, learned tasks and clusters built on a real
 work item are exempt — so a brand-new task can start its own group instead of
 only ever accreting into groups that already exist.
 
+### What the engine decides, and what it does not
+
+The engine is the single answer to "are these the same work". Everything that
+asks that question goes through it:
+
+| | Uses the engine |
+|---|---|
+| Clustering a whole window ([`affinity.js`](lib/affinity.js)) | Yes — pairwise scores, plus opener lineage |
+| Placing one arriving tab ([stage 6](#how-grouping-decides-a-tabs-group)) | Yes — scored against every group on screen |
+| Recognizing a learned task ([`taskMemory.js`](lib/taskMemory.js)) | Yes — same feature vocabulary, same weight table |
+| Min-size exemption | Yes — "does this name real work" |
+
+Three things deliberately bypass it, and it is worth being clear why:
+
+- **Pinned rules** are your explicit configuration. A rule you wrote should not
+  be second-guessed by a score.
+- **Internal hosts** ([`url.js`](lib/url.js)) are matched by a marker list
+  (`.corp.`, `.internal`, a bare or IP host, dashed cluster names) and grouped
+  deterministically *before* the engine sees them. That is the point: two
+  infrastructure clusters serving identical-looking pages must never be merged
+  by topic, and a score is exactly the thing that might merge them.
+- **Naming** ([`summarize.js`](lib/summarize.js)) answers a different question —
+  "what is this called" rather than "does this belong together" — so it ranks
+  words by how many tabs share them instead of scoring pairs.
+
 ## What it learns
 
 Grouping without memory is grouping that argues with you every morning: a
@@ -205,10 +234,13 @@ are recorded ([`lib/taskMemory.js`](lib/taskMemory.js)):
 | Capture a task (**+ Task**) | Both the name and the membership are yours, so it becomes the strongest profile of all. |
 | Nothing | Groups it made are still profiled weakly, so a task that recurs is recognized rather than re-derived. |
 
-A task is recognized by its work items first (decisive), then by hosts and
-distinctive title words (corroborating — several must agree, since any two tabs
-on `docs.google.com` share a host). See everything it has learned, and forget
-any of it, under **Settings → What it has learned**.
+A task is recognized by its work items first (decisive), then by subject words
+and paths, which have to add up — any two tabs on `docs.google.com` share a
+host, and that is precisely the inference this project exists to stop making.
+Profiles are stored in the engine's own feature vocabulary and scored with its
+weight table, so there is one definition of what evidence is worth rather than
+two that drift apart. See everything it has learned, and forget any of it, under
+**Settings → What it has learned**.
 
 ## Is the grouping actually good?
 
