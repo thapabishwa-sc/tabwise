@@ -168,7 +168,7 @@ than being dragged into whichever was compared first. Sharing subject matter
 joins regardless, which is what lets a ticket group with the wiki page
 documenting it while staying apart from the next ticket in the same tracker.
 
-Two structural details do a lot of work:
+Three structural details do a lot of work:
 
 - **Interior path segments name containers; the leaf names content.** In
   `github.com/acme/monorepo/pull/500` the word "monorepo" is interior, so two
@@ -180,6 +180,11 @@ Two structural details do a lot of work:
 - **A path ending in a bare number is item N of its container.** The only thing
   telling `/pull/1` from `/pull/2` apart is the number, so it counts as an
   identity despite being far too short to look like one.
+- **Bracketed labels in a title are metadata, not subject.** `[single-org]`,
+  `[ap-tokyo-1]`, `[WIP]` are stamped on every ticket in a queue, so as subject
+  matter they merge an onboarding ticket with an upgrade one and name the result
+  "Single Org". They are kept as weak container evidence — two tabs about the
+  same deployment do share something — and excluded from names entirely.
 
 A tab opened from another tab (`openerTabId`) is joined outright, ahead of all
 of this. Following a link from a ticket to its pull request is the most reliable
@@ -214,9 +219,12 @@ Three things deliberately bypass it, and it is worth being clear why:
   be second-guessed by a score.
 - **Internal hosts** ([`url.js`](lib/url.js)) are matched by a marker list
   (`.corp.`, `.internal`, a bare or IP host, dashed cluster names) and grouped
-  deterministically *before* the engine sees them. That is the point: two
-  infrastructure clusters serving identical-looking pages must never be merged
-  by topic, and a score is exactly the thing that might merge them.
+  deterministically *before* the engine sees them. This one is load-bearing, and
+  measurably so: given two infrastructure clusters whose pages are titled
+  identically ("Grafana - Node exporter" on both), the engine scores them as the
+  same work at 1.06 and merges them — which is the original complaint that
+  started this project. There is a test asserting both that the pipeline keeps
+  them apart and that the engine alone would not.
 - **Naming** ([`summarize.js`](lib/summarize.js)) answers a different question —
   "what is this called" rather than "does this belong together" — so it ranks
   words by how many tabs share them instead of scoring pairs.
@@ -267,13 +275,15 @@ Current state:
 
 ```
   fixture               COLD F1         prec   rec    names  groups  WARM F1
-  auth-migration        ██████████░░ 0.80  1.00   0.67   1.00   4/2      1.00 +0.20
+  auth-migration        ██████████░░ 0.86  1.00   0.75   1.00   3/2      1.00 +0.14
   infra-oncall          ████████████ 1.00  1.00   1.00   1.00   4/4   ✓  1.00   =
-  mixed-saas-day        ███████████░ 0.88  1.00   0.78   1.00   4/3      1.00 +0.12
+  mixed-saas-day        ████████████ 1.00  1.00   1.00   1.00   3/3   ✓  1.00   =
   monorepo-multitask    ████████████ 1.00  1.00   1.00   1.00   3/3   ✓  1.00   =
   research-sprawl       ████████████ 1.00  1.00   1.00   1.00   5/5   ✓  1.00   =
+  tagged-ticket-queue   ████████████ 1.00  1.00   1.00   1.00   4/4   ✓  1.00   =
+  ticket-and-its-docs   ████████████ 1.00  1.00   1.00   1.00   3/3   ✓  1.00   =
   ticket-lookalikes     ████████████ 1.00  1.00   1.00   1.00   5/5   ✓  1.00   =
-  OVERALL               ███████████░ 0.946                 1.00           1.000
+  OVERALL               ████████████ 0.982                 1.00           1.000
 ```
 
 The on-device model is not available to the benchmark, so cold scores are a
@@ -284,8 +294,10 @@ whether `AUTH-482` and `AUTH-495` are one effort cannot be read off a URL.
 
 The engine's constants were chosen against these fixtures, so `--tune` sweeps
 the relatedness threshold to check none of them is balanced on a knife edge.
-Scores hold flat from 0.3 to 0.8, which says the *ranking* of the signals is
-doing the work rather than a number fitted to seven examples.
+Scores hold flat from 0.2 to 0.5, which says the *ranking* of the signals is
+doing the work rather than a number fitted to a handful of examples. The setting
+is the **top** of that plateau: over-merging is the worse failure, so the most
+conservative value still scoring at peak is the one to take.
 
 ## Pinned rules
 
@@ -359,6 +371,7 @@ manifest.json        # MV3 manifest (permissions: tabs, tabGroups, storage)
 background.js        # service worker: events, accordion, message routing
 lib/resolve.js       # the grouping pipeline, pure and benchmarkable
 lib/context.js       # scores how related any two tabs are, with no site rules
+lib/refs.js          # what counts as a work-item reference (vs. UTF-8, Q3-2026)
 lib/affinity.js      # turns those pairwise scores into clusters
 lib/taskSignal.js    # per-site knowledge, used only to phrase AI prompt hints
 lib/taskMemory.js    # what it has learned: your names, your pins, task profiles
@@ -379,7 +392,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 109 checks
+node scripts/test-grouping.mjs   # 144 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 

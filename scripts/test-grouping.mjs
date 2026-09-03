@@ -10,7 +10,7 @@
 
 import { readTask, taskKey, titleTaskKey } from '../lib/taskSignal.js';
 import { clusterTabs, labelForKey, nameCluster } from '../lib/affinity.js';
-import { summarizeTitles, looksLikeIdentifier } from '../lib/summarize.js';
+import { summarizeTitles, looksLikeIdentifier, titleTokens } from '../lib/summarize.js';
 import { isInternalHost, subdomainGroupLabel } from '../lib/url.js';
 import { consolidateLabels } from '../lib/aiGrouper.js';
 import {
@@ -342,6 +342,71 @@ check('an interior path segment names a container, a leaf names content',
     { id: 1, title: 'Fix upload · Pull Request #1 · acme/monorepo', url: 'https://github.com/acme/monorepo/pull/1' },
     { id: 2, title: 'Fix login · Pull Request #2 · acme/monorepo', url: 'https://github.com/acme/monorepo/pull/2' },
   ]).map(c => c.tabs.map(t => t.id)), [[1], [2]]);
+
+// --- Boilerplate in titles is not subject matter ---------------------------
+
+// Reported from real use: every ticket in a queue carries the same bracketed
+// deployment tags, so treating them as subject matter merged onboarding work
+// with upgrade work and named the group "Single Org".
+{
+  const queue = [
+    { id: 1, title: '[single-org] [ap-tokyo-1] customerpoc - onboarding', url: 'https://acme.atlassian.net/browse/SASOBD-603' },
+    { id: 2, title: 'NG-SaaS onboarding offboarding - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding' },
+    { id: 3, title: '[single-org] [ap-tokyo-1] acmecorp - upgrade failed at step 4', url: 'https://acme.atlassian.net/browse/SASUPG-211' },
+    { id: 4, title: '[single-org] [us-ashburn-1] betacorp - upgrade stuck', url: 'https://acme.atlassian.net/browse/SASUPG-244' },
+  ];
+  const got = clusterTabs(queue);
+  check('shared deployment tags do not merge unrelated tickets',
+    got.map(c => c.tabs.map(t => t.id)), [[1, 2], [3, 4]]);
+  check('and the group is not named after the tag', nameCluster(got[0]), 'Softbankpoc Onboarding'.replace('Softbankpoc', 'Customerpoc'));
+  check('a bracketed tag is not a title word',
+    titleTokens('[single-org] [ap-tokyo-1] customerpoc - onboarding'),
+    ['customerpoc', 'onboarding']);
+}
+
+// A quarter looks exactly like a ticket. The denylist that rejects it lived in
+// two copies — one for grouping, one for prompt hints — which had already
+// drifted sixteen entries, leaving the copy doing the grouping the weaker one.
+check('a quarter is not a work item',
+  identitiesOf({ id: 1, title: 'Q3-2026 revenue plan', url: 'https://example.com/x' }), []);
+check('two unrelated pages sharing a quarter stay apart',
+  clusterTabs([
+    { id: 1, title: 'Q3-2026 revenue plan', url: 'https://example.com/finance/revenue' },
+    { id: 2, title: 'Q3-2026 hiring freeze memo', url: 'https://other.com/hr/freeze' },
+  ]).map(c => c.tabs.map(t => t.id)), [[1], [2]]);
+check('a real reference still reads',
+  identitiesOf({ id: 1, title: 'AUTH-482 rollout', url: 'https://example.com/x' }), ['ref:AUTH-482']);
+
+// --- Internal hosts must never be merged by topic --------------------------
+
+// This is why internal hosts are resolved BEFORE the context engine. Scored,
+// two infrastructure clusters serving identically-titled pages look like the
+// same work — the titles are identical — and merging them is the original
+// complaint that started all of this.
+{
+  const infra = [
+    { id: 1, title: 'Grafana', url: 'https://prod-eu-frankfurt-1-grafana.corp.example.com/login' },
+    { id: 2, title: 'Grafana - Node exporter', url: 'https://prod-eu-frankfurt-1-grafana.corp.example.com/d/node/nodes' },
+    { id: 3, title: 'Grafana', url: 'https://prod-ap-singapore-1-grafana.corp.example.com/login' },
+    { id: 4, title: 'Grafana - Node exporter', url: 'https://prod-ap-singapore-1-grafana.corp.example.com/d/node/nodes' },
+  ];
+  const settings = {
+    minGroupSize: 1,
+    internalDomains: ['corp.example.com'],
+    subdomainScope: 'internal',
+    subdomainStrategy: 'subdomain',
+  };
+  const { assignments } = await resolveGroups(infra, { settings, memory: emptyMemory() });
+  const label = (id) => assignments.get(id).label;
+  check('tabs on one internal host group together', label(1) === label(2), true);
+  check('two internal clusters are never merged', label(1) === label(3), false);
+  check('not even with identical page titles', label(2) === label(4), false);
+  check('and it reports why', assignments.get(1).reason, 'internal');
+
+  // The engine, given the same pair, would merge them — which is the point.
+  const ctx = buildContext(infra);
+  check('the engine alone would have merged them', ctx.relate(2, 4).related, true);
+}
 
 // --- A tab arriving alone can still find its group -------------------------
 

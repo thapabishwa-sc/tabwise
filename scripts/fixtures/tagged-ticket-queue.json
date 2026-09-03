@@ -1,0 +1,13 @@
+{
+  "name": "tagged-ticket-queue",
+  "description": "A support queue whose ticket titles all carry the same bracketed deployment tags ([single-org], [ap-tokyo-1]). The tags are boilerplate shared by every ticket, so counting them as subject matter merges onboarding work with upgrade work and names the result after the tag. Reported from real use.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    { "id": 1, "gold": "Onboarding", "title": "[single-org] [ap-tokyo-1] customerpoc - onboarding", "url": "https://acme.atlassian.net/browse/SASOBD-603" },
+    { "id": 2, "gold": "Onboarding", "title": "NG-SaaS onboarding offboarding - Confluence", "url": "https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding" },
+    { "id": 3, "gold": "Upgrade", "title": "[single-org] [ap-tokyo-1] acmecorp - upgrade failed at step 4", "url": "https://acme.atlassian.net/browse/SASUPG-211" },
+    { "id": 4, "gold": "Upgrade", "title": "[single-org] [us-ashburn-1] betacorp - upgrade stuck on precheck", "url": "https://acme.atlassian.net/browse/SASUPG-244" },
+    { "id": 5, "gold": "Quarter Plan", "title": "Q3-2026 revenue plan", "url": "https://acme.example.com/finance/revenue-plan" },
+    { "id": 6, "gold": "Hiring Freeze", "title": "Q3-2026 hiring freeze memo", "url": "https://other.example.com/hr/freeze-memo" }
+  ]
+}
