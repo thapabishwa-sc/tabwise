@@ -1,0 +1,16 @@
+{
+  "name": "auth-migration",
+  "description": "One task spread over five hosts, plus a second unrelated task. The canonical case: grouping by host shatters this into six groups.",
+  "tabs": [
+    { "id": 1,  "gold": "Auth Migration", "title": "AUTH-482 Auth migration rollout plan - Jira", "url": "https://acme.atlassian.net/browse/AUTH-482" },
+    { "id": 2,  "gold": "Auth Migration", "title": "AUTH-495 rotate signing keys - Jira", "url": "https://acme.atlassian.net/browse/AUTH-495" },
+    { "id": 3,  "gold": "Auth Migration", "title": "AUTH-482: fix token refresh by bt · Pull Request #1203 · acme/gateway", "url": "https://github.com/acme/gateway/pull/1203" },
+    { "id": 4,  "gold": "Auth Migration", "title": "gateway/src/auth/token.go at main · acme/gateway", "url": "https://github.com/acme/gateway/blob/main/src/auth/token.go" },
+    { "id": 5,  "gold": "Auth Migration", "title": "OAuth2 token endpoint spec - Google Docs", "url": "https://docs.google.com/document/d/abc123def/edit", "opener": 3 },
+    { "id": 6,  "gold": "Auth Migration", "title": "RFC 6749 - The OAuth 2.0 Authorization Framework", "url": "https://www.rfc-editor.org/rfc/rfc6749", "opener": 5 },
+    { "id": 7,  "gold": "Auth Migration", "title": "auth-gateway latency - Grafana", "url": "https://grafana.acme.io/d/auth123/auth-gateway-latency", "opener": 3 },
+    { "id": 8,  "gold": "Q3 Budget", "title": "Q3 budget planning - Google Sheets", "url": "https://docs.google.com/spreadsheets/d/xyz789/edit" },
+    { "id": 9,  "gold": "Q3 Budget", "title": "Re: Q3 vendor invoice - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox/abc" },
+    { "id": 10, "gold": "Q3 Budget", "title": "Q3 budget notes", "url": "https://www.notion.so/Q3-budget-notes-1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d", "opener": 8 }
+  ]
+}

@@ -45,7 +45,7 @@ function renderGroups() {
   }
 
   for (const g of groups) {
-    groupsEl.appendChild(groupCard(g.id, g.title, g.color || 'grey', g.tabs));
+    groupsEl.appendChild(groupCard(g.id, g.title, g.color || 'grey', g.tabs, g.lastActive));
   }
   if (ungrouped.length > 0) {
     groupsEl.appendChild(groupCard(null, `Ungrouped (${ungrouped.length})`, 'grey', ungrouped));
@@ -84,7 +84,7 @@ searchInput.addEventListener('keydown', async (e) => {
   }
 });
 
-function groupCard(groupId, title, color, tabs) {
+function groupCard(groupId, title, color, tabs, lastActive) {
   const card = document.createElement('div');
   card.className = 'group';
 
@@ -104,6 +104,13 @@ function groupCard(groupId, title, color, tabs) {
   count.textContent = tabs.length;
 
   header.append(dot, titleEl);
+  if (lastActive) {
+    const when = document.createElement('span');
+    when.className = 'group-when';
+    when.textContent = relativeTime(lastActive);
+    when.title = `Last used ${new Date(lastActive).toLocaleString()}`;
+    header.append(when);
+  }
 
   // Inline rename + move-to-window (real groups only)
   if (groupId != null) {
@@ -142,6 +149,51 @@ function groupCard(groupId, title, color, tabs) {
   return card;
 }
 
+/** "3m", "2h", "4d" — compact enough to sit in a group header. */
+function relativeTime(ts) {
+  const secs = Math.max(0, (Date.now() - ts) / 1000);
+  if (secs < 90) return 'now';
+  const mins = secs / 60;
+  if (mins < 60) return `${Math.round(mins)}m`;
+  const hours = mins / 60;
+  if (hours < 24) return `${Math.round(hours)}h`;
+  const days = hours / 24;
+  if (days < 7) return `${Math.round(days)}d`;
+  return `${Math.round(days / 7)}w`;
+}
+
+/**
+ * Short label for why a tab is in its group. The long form goes in the
+ * tooltip; the badge has to fit on one line next to the title.
+ */
+const VIA_TEXT = {
+  trail: 'link trail',
+  key: 'same item',
+  alone: '',
+};
+
+const REASON_BADGE = {
+  pin: 'you',
+  rule: 'rule',
+  internal: 'host',
+  learned: 'learned',
+  ai: 'AI',
+  summary: 'titles',
+  host: 'site',
+  misc: 'leftover',
+};
+
+function whyBadge(t) {
+  if (!t.reason) return null;
+  const badge = document.createElement('span');
+  // An AI guess is the one worth double-checking, so it is the one marked.
+  badge.className = `why why-${t.reason}`;
+  const via = VIA_TEXT[t.via] || '';
+  badge.textContent = REASON_BADGE[t.reason] || t.reason;
+  badge.title = [t.reasonText, via && `joined by ${via}`].filter(Boolean).join(' · ');
+  return badge;
+}
+
 function tabRow(t, currentGroupTitle) {
   const row = document.createElement('div');
   row.className = 'tab-row';
@@ -161,6 +213,9 @@ function tabRow(t, currentGroupTitle) {
   row.title = t.url;
 
   row.append(icon, titleSpan);
+
+  const badge = whyBadge(t);
+  if (badge) row.append(badge);
 
   // Move control — not for pinned tabs (Chrome can't group them).
   if (!t.pinned) {

@@ -57,6 +57,7 @@ async function loadSettings() {
     .map(r => `${r.match} = ${r.label}`)
     .join('\n');
   refreshAiStatus();
+  loadMemoryList();
 }
 
 // --- Save ---
@@ -107,6 +108,76 @@ btnReset.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'RESET_SETTINGS' });
   await loadSettings();
   showToast('Reset to defaults!');
+});
+
+// --- Learned tasks ---
+
+const memoryListEl = document.getElementById('memory-list');
+const btnRefreshMemory = document.getElementById('btn-refresh-memory');
+const btnClearMemory = document.getElementById('btn-clear-memory');
+
+function renderMemory(tasks) {
+  memoryListEl.innerHTML = '';
+  if (!tasks || tasks.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'mem-empty';
+    empty.textContent = 'Nothing learned yet. Rename a group, or drag a tab into one, '
+      + 'and it will show up here.';
+    memoryListEl.appendChild(empty);
+    return;
+  }
+
+  for (const t of tasks) {
+    const row = document.createElement('div');
+    row.className = 'mem-row';
+
+    const name = document.createElement('span');
+    name.className = 'mem-name';
+    name.textContent = t.label;
+    row.appendChild(name);
+
+    if (t.userNamed) {
+      const badge = document.createElement('span');
+      badge.className = 'mem-badge';
+      badge.textContent = 'your name';
+      row.appendChild(badge);
+    }
+
+    // What this task is recognized by, so a bad match is diagnosable.
+    const facts = document.createElement('span');
+    facts.className = 'mem-facts';
+    const bits = [];
+    if (t.keys && t.keys.length) bits.push(t.keys.join(', '));
+    if (t.hosts && t.hosts.length) bits.push(t.hosts.slice(0, 3).join(', '));
+    if (t.tokens && t.tokens.length) bits.push(t.tokens.slice(0, 5).join(' '));
+    facts.textContent = bits.join('  ·  ') || 'no signals yet';
+    facts.title = facts.textContent;
+    row.appendChild(facts);
+
+    const forget = document.createElement('button');
+    forget.className = 'btn';
+    forget.textContent = 'Forget';
+    forget.addEventListener('click', async () => {
+      const r = await chrome.runtime.sendMessage({ type: 'FORGET_TASK', label: t.label });
+      renderMemory(r.tasks);
+      showToast(`Forgot "${t.label}".`);
+    });
+    row.appendChild(forget);
+
+    memoryListEl.appendChild(row);
+  }
+}
+
+async function loadMemoryList() {
+  const r = await chrome.runtime.sendMessage({ type: 'GET_MEMORY' });
+  renderMemory(r && r.tasks);
+}
+
+btnRefreshMemory.addEventListener('click', loadMemoryList);
+btnClearMemory.addEventListener('click', async () => {
+  const r = await chrome.runtime.sendMessage({ type: 'CLEAR_MEMORY' });
+  renderMemory(r.tasks);
+  showToast('Forgot every learned task.');
 });
 
 // --- Import / Export (runtime overrides) ---
@@ -192,6 +263,7 @@ btnPrepare.addEventListener('click', async () => {
     aiStatusHint.textContent = 'Could not prepare model. Check Wi-Fi / disk space.';
   }
   refreshAiStatus();
+  loadMemoryList();
 });
 
 // --- Helpers ---

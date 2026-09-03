@@ -1,0 +1,12 @@
+{
+  "name": "ticket-lookalikes",
+  "description": "Pages whose URLs and titles contain UPPERCASE-digit strings that look exactly like ticket keys but are standards and encodings. Each is unrelated work; treating the lookalike as a task key clusters them wrongly.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    { "id": 1, "gold": "Encoding Bug", "title": "UTF-8 encoding mangles emoji on export", "url": "https://acme.zendesk.com/tickets/8891?charset=UTF-8" },
+    { "id": 2, "gold": "Date Format", "title": "ISO-8601 date format reference", "url": "https://example.com/std/ISO-8601" },
+    { "id": 3, "gold": "Hash Choice", "title": "SHA-256 vs SHA-512 for signing", "url": "https://example.com/crypto/SHA-256/compare" },
+    { "id": 4, "gold": "Vuln Triage", "title": "CVE-2024-3094 xz backdoor advisory", "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-3094" },
+    { "id": 5, "gold": "Oauth Spec", "title": "RFC-6749 section 4.1 authorization code", "url": "https://example.com/rfc/RFC-6749" }
+  ]
+}

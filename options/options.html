@@ -46,6 +46,21 @@
        full-width ones in the sections below. */
     .field textarea { width: 220px; min-height: 58px; margin-top: 0; flex: 0 0 auto; }
     .textarea-hint { font-size: 11px; color: #6a6a8a; margin-top: 4px; }
+    .memory-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .mem-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 4px;
+    }
+    .mem-name { font-size: 13px; color: #e0e0e0; font-weight: 600; }
+    .mem-badge {
+      font-size: 10px; padding: 1px 5px; border-radius: 3px;
+      color: #7ee0a8; border: 1px solid #23503a; background: #16281f;
+    }
+    .mem-facts { flex: 1 1 auto; font-size: 11px; color: #6a6a8a; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mem-empty { font-size: 12px; color: #6a6a8a; font-style: italic; }
+    .btn.danger { border-color: #5a2a3a; color: #f5a3b5; }
+    .btn.danger:hover { background: #3a1a26; }
     code { color: #7c83ff; }
 
     .badge { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: #2a2a4a; color: #9a9ac0; }
@@ -171,6 +186,21 @@
         <option value="host">Exact host</option>
         <option value="ai">Let AI group them</option>
       </select>
+    </div>
+  </div>
+
+  <!-- Learned tasks -->
+  <div class="section">
+    <h2>What it has learned</h2>
+    <p style="font-size:12px;color:#6a6a8a">
+      Every group you rename, and every tab you file by hand, teaches this list. A task
+      here is recognized instantly next time — no AI call — and keeps the name
+      <b>you</b> chose. Forget one if it starts pulling in the wrong tabs.
+    </p>
+    <div id="memory-list" class="memory-list"></div>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn" id="btn-refresh-memory">Refresh</button>
+      <button class="btn danger" id="btn-clear-memory">Forget everything</button>
     </div>
   </div>
 

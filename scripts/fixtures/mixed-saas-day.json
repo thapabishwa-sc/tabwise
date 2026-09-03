@@ -1,0 +1,15 @@
+{
+  "name": "mixed-saas-day",
+  "description": "Three unrelated work streams that heavily share hosts (three docs.google.com tabs, two github.com repos). Precision test: hostname grouping merges these into one blob.",
+  "tabs": [
+    { "id": 1,  "gold": "Gift Card", "title": "CART-88 checkout total wrong for gift cards - Jira", "url": "https://acme.atlassian.net/browse/CART-88" },
+    { "id": 2,  "gold": "Gift Card", "title": "CART-88: fix gift card rounding · Pull Request #442 · acme/storefront", "url": "https://github.com/acme/storefront/pull/442" },
+    { "id": 3,  "gold": "Gift Card", "title": "Gift card rounding investigation - Google Docs", "url": "https://docs.google.com/document/d/giftcard111/edit" },
+    { "id": 4,  "gold": "Hiring Loop", "title": "Interview loop for staff engineer - Google Docs", "url": "https://docs.google.com/document/d/hiring222/edit" },
+    { "id": 5,  "gold": "Hiring Loop", "title": "Candidate scorecards - Google Sheets", "url": "https://docs.google.com/spreadsheets/d/hiring333/edit", "opener": 4 },
+    { "id": 6,  "gold": "Hiring Loop", "title": "Staff engineer job post draft", "url": "https://www.notion.so/Staff-engineer-job-post-aaaabbbbccccddddeeeeffff00001111", "opener": 4 },
+    { "id": 7,  "gold": "Docs Site", "title": "DOC-12 rewrite the getting started guide - Jira", "url": "https://acme.atlassian.net/browse/DOC-12" },
+    { "id": 8,  "gold": "Docs Site", "title": "DOC-12: rewrite getting started · Pull Request #77 · acme/website", "url": "https://github.com/acme/website/pull/77" },
+    { "id": 9,  "gold": "Docs Site", "title": "website/docs/getting-started.md at main · acme/website", "url": "https://github.com/acme/website/blob/main/docs/getting-started.md" }
+  ]
+}

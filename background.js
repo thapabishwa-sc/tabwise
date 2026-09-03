@@ -1,8 +1,8 @@
 /**
  * Background service worker — event hub for AI Tab Grouper.
  *
- * Listens for tab create/navigate events and auto-groups tabs by topic using
- * on-device AI (with deterministic subdomain grouping for internal hosts).
+ * Listens for tab create/navigate events and groups each tab by the work it
+ * serves (lib/resolve.js), and routes messages from the popup and options page.
  */
 
 import {
@@ -20,6 +20,8 @@ import {
   snapshotSession,
   restoreSession,
   isBusy,
+  getReasons,
+  reasonText,
 } from './lib/tabManager.js';
 import {
   getSettings,
@@ -30,6 +32,10 @@ import {
   deleteSession,
 } from './lib/storage.js';
 import { checkAvailability, resetSession, prepareModel } from './lib/aiGrouper.js';
+import {
+  loadMemory, updateMemory, clearMemory, forgetTask, listTasks,
+  invalidateMemoryCache,
+} from './lib/taskMemory.js';
 
 // --- Debounce: wait for a tab to settle before grouping it ---
 const pendingUpdates = new Map();
@@ -111,8 +117,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleMessage(message) {
   switch (message.type) {
-    case 'GET_SNAPSHOT':
-      return await getGroupsSnapshot(message.windowId);
+    case 'GET_SNAPSHOT': {
+      const snapshot = await getGroupsSnapshot(message.windowId);
+      // Attach the explanation for each tab so the popup can say why a tab is
+      // where it is, and offer to fix it when the answer is wrong.
+      const reasons = await getReasons();
+      for (const g of snapshot.groups) {
+        for (const t of g.tabs) {
+          const r = reasons[t.id];
+          if (r && r.label === g.title) {
+            t.reason = r.reason;
+            t.via = r.via;
+            t.reasonText = reasonText(r.reason);
+          }
+        }
+      }
+      return snapshot;
+    }
+
+    case 'GET_MEMORY':
+      return { tasks: listTasks(await loadMemory()) };
+
+    case 'FORGET_TASK': {
+      const m = await updateMemory((mem) => forgetTask(mem, message.label));
+      return { tasks: listTasks(m) };
+    }
+
+    case 'CLEAR_MEMORY': {
+      invalidateMemoryCache();
+      const m = await clearMemory();
+      return { tasks: listTasks(m) };
+    }
 
     case 'ORGANIZE_ALL':
       return await organizeAllTabs();

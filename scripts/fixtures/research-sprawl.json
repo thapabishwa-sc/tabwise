@@ -1,0 +1,14 @@
+{
+  "name": "research-sprawl",
+  "description": "A browsing session with no strong task keys: mostly unrelated single tabs plus one genuine research trail. Over-merging test — the temptation is to lump everything into one group.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    { "id": 1, "gold": "Rust Async", "title": "Asynchronous Programming in Rust", "url": "https://rust-lang.github.io/async-book/" },
+    { "id": 2, "gold": "Rust Async", "title": "tokio::select! - Rust", "url": "https://docs.rs/tokio/latest/tokio/macro.select.html", "opener": 1 },
+    { "id": 3, "gold": "Rust Async", "title": "Why is my tokio task starving? - Stack Overflow", "url": "https://stackoverflow.com/questions/12345678/tokio-task-starving", "opener": 2 },
+    { "id": 4, "gold": "Headphones", "title": "Best noise cancelling headphones 2026 - Wirecutter", "url": "https://www.nytimes.com/wirecutter/reviews/best-noise-cancelling-headphones/" },
+    { "id": 5, "gold": "Weather", "title": "Weather for San Jose, CA", "url": "https://weather.com/weather/today/l/95110" },
+    { "id": 6, "gold": "Flight Booking", "title": "Flights from SJC to SEA", "url": "https://www.google.com/travel/flights?q=SJC+to+SEA" },
+    { "id": 7, "gold": "Hacker News", "title": "Hacker News", "url": "https://news.ycombinator.com/" }
+  ]
+}

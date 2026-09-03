@@ -1,0 +1,12 @@
+{
+  "name": "monorepo-multitask",
+  "description": "Three separate tickets all touching one monorepo. The hard case for task keys: the shared repo key pulls them together, while the tickets pull them apart. Tests whether cross-platform bridging over-merges.",
+  "tabs": [
+    { "id": 1, "gold": "Login Redirect", "title": "WEB-101 login redirect loop - Jira", "url": "https://acme.atlassian.net/browse/WEB-101" },
+    { "id": 2, "gold": "Login Redirect", "title": "WEB-101: fix login redirect loop · Pull Request #500 · acme/monorepo", "url": "https://github.com/acme/monorepo/pull/500" },
+    { "id": 3, "gold": "Image Upload", "title": "WEB-115 image upload fails over 5MB - Jira", "url": "https://acme.atlassian.net/browse/WEB-115" },
+    { "id": 4, "gold": "Image Upload", "title": "WEB-115: chunk large image uploads · Pull Request #504 · acme/monorepo", "url": "https://github.com/acme/monorepo/pull/504" },
+    { "id": 5, "gold": "Search Latency", "title": "SEARCH-9 search latency p99 regression - Jira", "url": "https://acme.atlassian.net/browse/SEARCH-9" },
+    { "id": 6, "gold": "Search Latency", "title": "SEARCH-9: add search result cache · Pull Request #511 · acme/monorepo", "url": "https://github.com/acme/monorepo/pull/511" }
+  ]
+}

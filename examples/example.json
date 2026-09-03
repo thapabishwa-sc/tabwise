@@ -1,5 +1,5 @@
 {
-  "_comment": "Runtime config applied via Settings → Import. Merges over your current settings.",
+  "_comment": "Runtime config applied via Settings → Import. Merges over your current settings. Keys starting with _ are comments and are not saved.",
 
   "_internalDomains": "Hosts under these suffixes are infrastructure: they keep deterministic per-subdomain groups and never go to the AI, so two clusters are never merged by topic.",
   "internalDomains": [
@@ -9,10 +9,16 @@
   "subdomainScope": "internal",
   "subdomainStrategy": "prefix",
 
-  "_pinnedRules": "Force specific URLs into a fixed group. Prefer TASK-shaped rules (capture the project/ticket key) over host-shaped ones — a rule like 'github.com = Code' recreates the hostname grouping that task grouping exists to avoid. First match wins, so list specific rules first.",
+  "_pinnedRules": "Force specific URLs into a fixed group. Use these sparingly: a pinned rule REPLACES task grouping for anything it matches, so a broad rule like 'github.com = Code' puts every repo you touch into one bucket and undoes the whole point. They earn their place for genuinely site-bound activities that really are one task, and the label should still say what the work IS.",
   "pinnedRules": [
+    { "match": "atlassian.net/wiki", "label": "Team Docs" },
+    { "match": "workday.com", "label": "HR Admin" },
+    { "match": "expensify.com", "label": "Expenses" }
+  ],
+
+  "_captureRules": "Regex capture rules build the label from the URL. They are supported, but note what you get: 'Jira: AUTH' is an IDENTIFIER, and a group named after a ticket key means reading the key and remembering what it was about. Task grouping already puts a ticket with its PR, its spec and its dashboard, and names that group after the work ('Auth Migration'). Prefer that. If you still want fixed per-project buckets, move these into pinnedRules — pattern rules are evaluated before substring rules.",
+  "_captureRulesExample": [
     { "pattern": "atlassian\\.net/browse/([A-Z][A-Z0-9]+)-", "label": "Jira: $1" },
-    { "pattern": "atlassian\\.net/wiki/spaces/([A-Z0-9]+)/", "label": "Wiki: $1" },
     { "pattern": "github\\.com/[^/]+/([^/]+)", "label": "Repo: $1" }
   ]
 }
