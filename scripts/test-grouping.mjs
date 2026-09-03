@@ -8,6 +8,7 @@
  * not exercised here; those need the extension loaded in a browser.
  */
 
+import { readFileSync } from 'node:fs';
 import { readTask, taskKey, titleTaskKey } from '../lib/taskSignal.js';
 import { clusterTabs, labelForKey, nameCluster } from '../lib/affinity.js';
 import { summarizeTitles, looksLikeIdentifier, titleTokens } from '../lib/summarize.js';
@@ -17,7 +18,7 @@ import {
   emptyMemory, observe, learnRename, learnMove, forgetTask,
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
-import { resolveGroups, relatedGroupFor } from '../lib/resolve.js';
+import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
 import { buildContext, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
@@ -253,6 +254,41 @@ check('SaaS host is left to task grouping',
   subdomainGroupLabel('https://docs.google.com/x', 'subdomain', opts), null);
 check('IP host groups by the whole address, not its first octet',
   subdomainGroupLabel('https://10.0.4.12/x', 'subdomain', opts), '10.0.4.12');
+// --- One cluster is one group -----------------------------------------------
+
+// Reported from real use: every service on a cluster was getting its own group.
+{
+  const co = { scope: 'internal', internalDomains: ['corp.example.com'] };
+  const label = (h) => subdomainGroupLabel(`https://${h}.corp.example.com/x`, 'cluster', co);
+
+  check('every service on a cluster shares one group',
+    [label('prod-eu-frankfurt-1-grafana'), label('prod-eu-frankfurt-1-kibana'), label('prod-eu-frankfurt-1-jumper')],
+    ['prod-eu-frankfurt-1', 'prod-eu-frankfurt-1', 'prod-eu-frankfurt-1']);
+  check('component suffixes collapse too',
+    [label('gamma-dl'), label('gamma-da'), label('gamma-jumper')],
+    ['gamma', 'gamma', 'gamma']);
+  check('two clusters still never merge',
+    label('prod-eu-frankfurt-1-grafana') === label('prod-ap-singapore-1-grafana'), false);
+  check('nor do two deployments', label('gamma-dl') === label('delta-dl'), false);
+
+  // The reason 'prefix' could not simply become the default: it takes the last
+  // token unconditionally, turning dev-qa3 into dev and merging two clusters.
+  check('a cluster whose name ends in its ordinal is left whole',
+    [label('dev-qa3'), label('dev-qa4')], ['dev-qa3', 'dev-qa4']);
+  check('and prefix would have merged those two',
+    subdomainGroupLabel('https://dev-qa3.corp.example.com/x', 'prefix', co)
+      === subdomainGroupLabel('https://dev-qa4.corp.example.com/x', 'prefix', co), true);
+
+  check('a service token that is not trailing is kept', label('prod-db-01'), 'prod-db-01');
+  check('a single-token host is left alone', label('grafana'), 'grafana');
+  check('service tokens are configurable',
+    subdomainGroupLabel('https://alpha-widget.corp.example.com/x', 'cluster',
+      { ...co, clusterServiceTokens: ['widget'] }), 'alpha');
+  check('one group per service is still available',
+    subdomainGroupLabel('https://prod-eu-1-grafana.corp.example.com/x', 'subdomain', co),
+    'prod-eu-1-grafana');
+}
+
 check('legacy scope:all still groups any subdomain',
   subdomainGroupLabel('https://docs.google.com/x', 'subdomain', { scope: 'all' }), 'docs');
 check('prefix strategy drops the trailing dash-token',
@@ -542,6 +578,39 @@ const authGroup = [
 
 check('pin keys normalize host and trailing slash',
   pinKey('https://WWW.Example.com/a/b/'), 'example.com/a/b');
+
+// --- A tab is only judged once it can say what it is -----------------------
+
+// Reported from real use: a tab jumped into a group the moment it opened.
+// Grouping fired before the page had a title, leaving the hostname as the only
+// signal — the one inference this project exists to avoid.
+{
+  const settled = (title, url) => hasSettled({ title, url });
+  check('no title yet is not settled', settled('', 'https://acme.atlassian.net/browse/A-1'), false);
+  check('the URL echoed back as a title is not settled',
+    settled('https://acme.atlassian.net/browse/A-1', 'https://acme.atlassian.net/browse/A-1'), false);
+  check('a bare hostname placeholder is not settled',
+    settled('acme.atlassian.net', 'https://acme.atlassian.net/browse/A-1'), false);
+  check('a host+path placeholder is not settled',
+    settled('acme.atlassian.net/browse/A-1', 'https://acme.atlassian.net/browse/A-1'), false);
+  check('a real title is settled',
+    settled('A-1 fix the thing - Jira', 'https://acme.atlassian.net/browse/A-1'), true);
+}
+
+// --- The benchmark must test the configuration people actually run ---------
+
+{
+  const bench = readFileSync(new URL('./bench.mjs', import.meta.url), 'utf8');
+  const storage = readFileSync(new URL('../lib/storage.js', import.meta.url), 'utf8');
+  const setting = (src, key) => {
+    const m = src.match(new RegExp(`${key}:\\s*'([a-z]+)'`));
+    return m ? m[1] : null;
+  };
+  check('bench uses the real default host strategy',
+    setting(bench, 'subdomainStrategy'), setting(storage, 'subdomainStrategy'));
+  check('bench uses the real default host scope',
+    setting(bench, 'subdomainScope'), setting(storage, 'subdomainScope'));
+}
 
 // --- Report ---------------------------------------------------------------
 

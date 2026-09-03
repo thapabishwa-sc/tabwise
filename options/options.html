@@ -179,13 +179,21 @@
     <div class="field">
       <div>
         <label>Internal host labels</label>
-        <div class="hint">How the hosts above are named: <b>Full subdomain</b> (default), <b>Exact host</b> (strictest), or <b>Let AI group them</b>. Advanced strategies via Import.</div>
+        <div class="hint"><b>One group per cluster</b> (default) puts every service on a cluster together — <code>prod-eu-1-grafana</code>, <code>prod-eu-1-kibana</code> and <code>prod-eu-1-jumper</code> in one group, <code>gamma-dl</code> and <code>gamma-da</code> in another. Different clusters still never merge. <b>One group per service</b> gives each its own group; <b>Exact host</b> is strictest.</div>
       </div>
       <select id="subdomainStrategy">
-        <option value="subdomain">Full subdomain</option>
+        <option value="cluster">One group per cluster</option>
+        <option value="subdomain">One group per service</option>
         <option value="host">Exact host</option>
         <option value="ai">Let AI group them</option>
       </select>
+    </div>
+    <div class="field">
+      <div>
+        <label>Service name tokens</label>
+        <div class="hint">Trailing hostname parts that name a <i>service on</i> a cluster rather than the cluster itself, one per line. Leave empty to use the built-in list (<code>dl</code>, <code>da</code>, <code>jumper</code>, <code>grafana</code>, <code>kibana</code>, <code>api</code>, <code>web</code>, …). Add your own component names here if your clusters use different ones.</div>
+      </div>
+      <textarea id="clusterServiceTokens" rows="3" placeholder="dl&#10;da&#10;jumper"></textarea>
     </div>
   </div>
 

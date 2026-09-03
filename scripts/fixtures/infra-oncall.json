@@ -1,15 +1,60 @@
 {
   "name": "infra-oncall",
-  "description": "On-call session. Two internal clusters that must never merge despite identical pages, plus one real incident task spanning ticket, repo and dashboard.",
-  "settings": { "internalDomains": ["corp.example.com"] },
+  "description": "On-call session. Two internal clusters that must never merge despite identical pages, each seen through more than one service \u2014 so this also pins that every service on a cluster lands in ONE group. Plus one real incident task spanning ticket, repo and dashboard.",
+  "settings": {
+    "internalDomains": [
+      "corp.example.com"
+    ]
+  },
   "tabs": [
-    { "id": 1, "gold": "eu-frankfurt", "title": "Grafana", "url": "https://prod-eu-frankfurt-1-grafana.corp.example.com/login" },
-    { "id": 2, "gold": "eu-frankfurt", "title": "Grafana - Node exporter", "url": "https://prod-eu-frankfurt-1-grafana.corp.example.com/d/node/nodes" },
-    { "id": 3, "gold": "ap-singapore", "title": "Grafana", "url": "https://prod-ap-singapore-1-grafana.corp.example.com/login" },
-    { "id": 4, "gold": "ap-singapore", "title": "Grafana - Node exporter", "url": "https://prod-ap-singapore-1-grafana.corp.example.com/d/node/nodes" },
-    { "id": 5, "gold": "Analytics Worker", "title": "SRE-77 memory limits for analytics worker - Jira", "url": "https://acme.atlassian.net/browse/SRE-77" },
-    { "id": 6, "gold": "Analytics Worker", "title": "SRE-77: raise analytics worker memory limit · Pull Request #9 · acme/infra", "url": "https://github.com/acme/infra/pull/9" },
-    { "id": 7, "gold": "Analytics Worker", "title": "OOMKilled analytics-worker pods - Google Docs", "url": "https://docs.google.com/document/d/oom444/edit", "opener": 5 },
-    { "id": 8, "gold": "jenkins", "title": "infra-deploy #1841 [Jenkins]", "url": "https://jenkins/job/infra-deploy/1841/" }
+    {
+      "id": 1,
+      "gold": "eu-frankfurt",
+      "title": "Grafana",
+      "url": "https://prod-eu-frankfurt-1-grafana.corp.example.com/login"
+    },
+    {
+      "id": 2,
+      "gold": "eu-frankfurt",
+      "title": "Kibana - Discover",
+      "url": "https://prod-eu-frankfurt-1-kibana.corp.example.com/app/discover"
+    },
+    {
+      "id": 3,
+      "gold": "ap-singapore",
+      "title": "Grafana",
+      "url": "https://prod-ap-singapore-1-grafana.corp.example.com/login"
+    },
+    {
+      "id": 4,
+      "gold": "ap-singapore",
+      "title": "Kibana - Discover",
+      "url": "https://prod-ap-singapore-1-kibana.corp.example.com/app/discover"
+    },
+    {
+      "id": 5,
+      "gold": "Analytics Worker",
+      "title": "SRE-77 memory limits for analytics worker - Jira",
+      "url": "https://acme.atlassian.net/browse/SRE-77"
+    },
+    {
+      "id": 6,
+      "gold": "Analytics Worker",
+      "title": "SRE-77: raise analytics worker memory limit \u00b7 Pull Request #9 \u00b7 acme/infra",
+      "url": "https://github.com/acme/infra/pull/9"
+    },
+    {
+      "id": 7,
+      "gold": "Analytics Worker",
+      "title": "OOMKilled analytics-worker pods - Google Docs",
+      "url": "https://docs.google.com/document/d/oom444/edit",
+      "opener": 5
+    },
+    {
+      "id": 8,
+      "gold": "jenkins",
+      "title": "infra-deploy #1841 [Jenkins]",
+      "url": "https://jenkins/job/infra-deploy/1841/"
+    }
   ]
 }

@@ -116,9 +116,12 @@ async function runFixture(file, { verbose, threshold }) {
     openerTabId: t.opener,
   }));
 
+  // Mirrors lib/storage.js DEFAULTS. Drifting from the real defaults would mean
+  // benchmarking a configuration nobody runs.
   const settings = {
     subdomainScope: 'internal',
-    subdomainStrategy: 'subdomain',
+    subdomainStrategy: 'cluster',
+    clusterServiceTokens: [],
     useOpenerAffinity: true,
     aiProjectMode: true,
     // Default to 1 so the score measures clustering rather than the leftover

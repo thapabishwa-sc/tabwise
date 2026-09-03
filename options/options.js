@@ -9,6 +9,7 @@ const fields = {
   subdomainStrategy: document.getElementById('subdomainStrategy'),
   subdomainScope: document.getElementById('subdomainScope'),
   internalDomains: document.getElementById('internalDomains'),
+  clusterServiceTokens: document.getElementById('clusterServiceTokens'),
   pinnedRules: document.getElementById('pinnedRules'),
 };
 
@@ -38,7 +39,7 @@ async function loadSettings() {
   fields.miscLabel.value = s.miscLabel || 'Other';
   // Preserve a non-standard strategy applied via Import (e.g. 'prefix')
   // so it shows in the dropdown and isn't clobbered on Save.
-  const strat = s.subdomainStrategy || 'subdomain';
+  const strat = s.subdomainStrategy || 'cluster';
   const sel = fields.subdomainStrategy;
   if (![...sel.options].some(o => o.value === strat)) {
     const opt = document.createElement('option');
@@ -49,6 +50,7 @@ async function loadSettings() {
   sel.value = strat;
   fields.subdomainScope.value = s.subdomainScope === 'all' ? 'all' : 'internal';
   fields.internalDomains.value = (s.internalDomains || []).join('\n');
+  fields.clusterServiceTokens.value = (s.clusterServiceTokens || []).join('\n');
   // Textarea manages only simple substring rules; keep pattern rules aside.
   const allRules = s.pinnedRules || [];
   advancedRules = allRules.filter(r => r.pattern);
@@ -97,6 +99,7 @@ btnSave.addEventListener('click', async () => {
     subdomainStrategy: fields.subdomainStrategy.value,
     subdomainScope: fields.subdomainScope.value === 'all' ? 'all' : 'internal',
     internalDomains: parseLines(fields.internalDomains.value),
+    clusterServiceTokens: parseLines(fields.clusterServiceTokens.value),
     // Pattern rules first (more specific) so they win, then substring rules.
     pinnedRules: [...advancedRules, ...parseRules(fields.pinnedRules.value)],
   };

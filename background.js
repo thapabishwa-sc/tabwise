@@ -22,6 +22,8 @@ import {
   isBusy,
   getReasons,
   reasonText,
+  noteTabOrigin,
+  forgetTabOrigin,
 } from './lib/tabManager.js';
 import {
   getSettings,
@@ -62,13 +64,26 @@ async function processTabUpdate(tabId) {
 
 // --- Tab events ---
 
+// A tab is grouped only once it can say what it is.
+//
+// Grouping on creation, or on the first URL change, meant deciding before the
+// page had a title — so a tab was placed on its hostname alone, which is the
+// one signal this whole project exists to stop grouping by. It looked like the
+// tab "jumping into" whatever group was nearby. A tab now stays ungrouped,
+// visibly loose, until it has loaded enough to be judged.
 chrome.tabs.onCreated.addListener((tab) => {
-  if (tab.url && tab.url !== 'about:blank') debounceTabUpdate(tab.id);
+  // Remember whether this tab began life following a link. A tab opened blank
+  // (Ctrl+T, the new-tab button) still carries openerTabId pointing at whatever
+  // happened to be focused, and inheriting that tab's group is wrong: nothing
+  // was followed, the address was typed.
+  const followedALink = !!tab.url && /^https?:\/\//i.test(tab.url);
+  noteTabOrigin(tab.id, followedALink);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  // Group once the URL is known and the page has settled.
-  if (changeInfo.url || changeInfo.status === 'complete') debounceTabUpdate(tabId);
+  // 'complete' means the page has loaded; a title change means it has told us
+  // what it is. Either is enough to judge it; a bare URL change is not.
+  if (changeInfo.status === 'complete' || changeInfo.title) debounceTabUpdate(tabId);
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -76,6 +91,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     clearTimeout(pendingUpdates.get(tabId));
     pendingUpdates.delete(tabId);
   }
+  forgetTabOrigin(tabId);
 });
 
 // --- Accordion: collapse groups that lose focus as you switch tabs ---

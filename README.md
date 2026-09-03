@@ -60,6 +60,11 @@ group or drag a tab, and that correction sticks.
   own group.
 - **Most recent work first** — groups are ordered by when you last touched them,
   with a relative timestamp in the header, so today's work is at the top.
+- **One cluster, one group** — every service on an internal cluster lands
+  together, while two clusters never merge. `prod-eu-1-grafana` and
+  `prod-eu-1-kibana` are one group; `prod-ap-1-grafana` is another.
+- **No guessing while a tab loads** — a new tab stays uncategorized until it has
+  a real title. Nothing is placed on its hostname alone.
 - **Quick-switcher search** — filter tabs across all groups; Enter jumps to the
   first match.
 - **Natural-language grouping** — "group by project", "put all AWS tabs
@@ -112,11 +117,23 @@ the group is resolved in order of authority:
    the tab was you overriding it.
 2. **Pinned rule** — first rule whose `match` is a substring of
    `hostname + path` (or whose `pattern` matches).
-3. **Internal host** — infrastructure is labeled by `subdomainStrategy`, so two
-   clusters never merge. Only hosts that look internal qualify; see
-   `subdomainScope` below.
+3. **Internal host** — infrastructure is labeled by `subdomainStrategy`. Every
+   service on one cluster shares a group (`prod-eu-1-grafana`,
+   `prod-eu-1-kibana` and `prod-eu-1-jumper` are one group; `gamma-dl` and
+   `gamma-da` are another), and two clusters still never merge. Only hosts that
+   look internal qualify; see `subdomainScope` below.
+   Steps 1-3 need only the URL, so they apply the moment a tab appears.
+   Everything below infers, and **a tab stays out of every group until it has
+   loaded enough to be judged** — a title that is missing, or that is just the
+   URL echoed back, means the only signal available is the hostname. An
+   uncategorized tab is honest; one dropped into a group on its hostname alone
+   has to be corrected.
+
 4. **Link trail** — a tab opened from another tab in the same window joins that
-   tab's group. No AI call, so it lands correctly right away.
+   tab's group. No AI call, so it lands correctly right away. Only for a tab
+   that actually *began* by following a link: a tab opened blank still carries
+   `openerTabId` pointing at whatever was focused, and inheriting that group
+   makes a tab appear to jump into the group you were just in.
 5. **A task you've grouped before** — matched on its work items and vocabulary,
    and named with the name you gave it.
 6. **A group already on screen** — the context engine scores this tab against
@@ -358,7 +375,8 @@ Company-specific config isn't baked into the extension. Apply it at runtime via
 | Leftover group name | Other | Where sub-minimum tabs land. |
 | Group by host instead of task | Internal hosts only | `internal` restricts host grouping to infrastructure; `all` restores the old "any subdomain is its own group" behavior. |
 | Internal domains | (none) | Extra domain suffixes to treat as infrastructure. |
-| Internal host labels | Full subdomain | `subdomain` / `host` / `ai` (`prefix` via Import). |
+| Internal host labels | One group per cluster | `cluster` (services on a cluster share a group) / `subdomain` (one per service) / `host` / `ai`. |
+| Service name tokens | (built-in list) | Trailing hostname parts naming a service rather than a cluster (`dl`, `da`, `jumper`, `grafana`, …). |
 | Pinned rules | (above) | Force URLs into fixed groups. |
 | What it has learned | — | Review and forget learned tasks (not a setting; a list). |
 
