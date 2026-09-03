@@ -297,6 +297,33 @@ node scripts/test-grouping.mjs   # 109 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 
+## Does the AI learn?
+
+The model does not. It is Gemini Nano running on your machine through Chrome's
+Prompt API: frozen weights, no training, no fine-tuning, nothing written back.
+Every call starts from the same blank slate, and uninstalling the extension
+leaves the model exactly as it was.
+
+What learns is the layer around it. Three separate mechanisms, worth keeping
+apart:
+
+| | Where it lives | Survives a restart? | Touches the model? |
+|---|---|---|---|
+| **Task memory** — your names, your pins, task profiles | `chrome.storage.local` | Yes | No. It runs *before* the model and usually means the model is never asked. |
+| **In-prompt steering** — the group names already in use are restated in each prompt so the model reuses them | the prompt text, per call | No | Only as input, for that one call. |
+| **The model** | Chrome's on-device model | — | Never modified. |
+
+So the system gets better with use while the model stays fixed. That is a
+deliberate trade, and a good one here: your corrections take effect on the very
+next tab instead of after a training run, they are inspectable and reversible
+under **Settings → What it has learned**, and grouping keeps working when the
+model is unavailable.
+
+Each prompt also runs in its own cloned context. Grouping calls are independent
+classifications, not a conversation, and a shared session would otherwise
+accumulate a transcript of every call — filling the context window until prompts
+fail, and letting unrelated earlier decisions leak into later ones.
+
 ## Privacy
 
 All AI runs on-device via Chrome's built-in model. The extension requests only
