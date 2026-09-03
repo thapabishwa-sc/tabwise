@@ -1,0 +1,11 @@
+{
+  "name": "ticket-and-its-docs",
+  "description": "A ticket and the runbook page documenting that same work, in one Atlassian tenant. They are different work items (an issue vs a wiki page) with no link trail between them, so the only thing connecting them is the topic. Two unrelated tabs in the SAME tenant are included, so merging on shared hostname alone fails this fixture.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    { "id": 1, "gold": "Saas Onboarding", "title": "[single-org] [ap-tokyo-1] customerpoc - onboarding", "url": "https://acme.atlassian.net/browse/SASOBD-603" },
+    { "id": 2, "gold": "Saas Onboarding", "title": "NG-SaaS onboarding offboarding - Confluence", "url": "https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding" },
+    { "id": 3, "gold": "Billing Mismatch", "title": "[multi-org] billing invoice mismatch after renewal", "url": "https://acme.atlassian.net/browse/SASBIL-12" },
+    { "id": 4, "gold": "Interview Scorecard", "title": "Interview scorecard guide - Confluence", "url": "https://acme.atlassian.net/wiki/spaces/HR/pages/1234567/Interview+scorecard+guide" }
+  ]
+}
