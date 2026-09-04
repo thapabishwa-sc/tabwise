@@ -380,6 +380,31 @@ check('while two tabs of the same page still share one',
   ]).map((c) => c.tabs.map((t) => t.id)), [[1, 2]]);
 check('a readable slug is not an identity',
   identitiesOf({ id: 1, title: 'x', url: 'https://any.host/docs/getting-started-2' }), []);
+
+// Generated keys often contain dashes — every Google Docs, Sheets and Drive id
+// does — and rejecting dashes outright meant none of them identified anything.
+// A document with no identity has nothing to stop container evidence adopting
+// it, and two tabs of the same document did not recognize each other.
+check('a dashed generated key is an identity',
+  identitiesOf({ id: 1, title: 'x', url: 'https://docs.google.com/spreadsheets/d/1ri2QCixIfitJYeHGn-ZMEXZeLmywYBPh8kRs8O75pzY/edit' }),
+  ['opaque:docs.google.com/1ri2QCixIfitJYeHGn-ZMEXZeLmywYBPh8kRs8O75pzY']);
+check('two tabs of the same sheet share it',
+  clusterTabs([
+    { id: 1, title: 'Tracker', url: 'https://docs.google.com/spreadsheets/d/1ri2QCixIfitJYeHGn-ZMEXZeLmywYBPh8kRs8O75pzY/edit?gid=1' },
+    { id: 2, title: 'Tracker', url: 'https://docs.google.com/spreadsheets/d/1ri2QCixIfitJYeHGn-ZMEXZeLmywYBPh8kRs8O75pzY/edit?gid=2' },
+  ]).map((c) => c.tabs.map((t) => t.id)), [[1, 2]]);
+// Length, mixed case and a digit are what separate a key from a title.
+check('a dashed slug with no capitals is not an identity',
+  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/a/quarterly-revenue-plan-2026' }), []);
+check('a dashed slug with no digits is not an identity',
+  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/a/NG-SaaS-onboarding-offboarding' }), []);
+// Two DIFFERENT documents on one site must stay apart: same host, same path
+// shape, nothing else in common.
+check('two different sheets are two tasks',
+  clusterTabs([
+    { id: 1, title: 'Customer contact list', url: 'https://docs.google.com/spreadsheets/d/1ri2QCixIfitJYeHGn-ZMEXZeLmywYBPh8kRs8O75pzY/edit' },
+    { id: 2, title: 'Q3 headcount', url: 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrS-tUvWxYz0123456789/edit' },
+  ]).map((c) => c.tabs.map((t) => t.id)), [[1], [2]]);
 check('namesWork reflects that', namesWork({ id: 1, title: 'PLAT-88 x', url: 'https://a.b/c' }), true);
 
 {
