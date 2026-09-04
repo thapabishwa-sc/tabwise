@@ -40,7 +40,7 @@ import { checkAvailability, resetSession, prepareModel } from './lib/aiGrouper.j
 import { probeAi } from './lib/aiProbe.js';
 import {
   loadMemory, updateMemory, clearMemory, forgetTask, listTasks,
-  forgetFeature, addFeature, renameTask, wordFeature,
+  forgetFeature, addFeature, renameTask, wordFeature, resetProfiles,
   invalidateMemoryCache,
 } from './lib/taskMemory.js';
 import {
@@ -204,6 +204,11 @@ async function handleMessage(message) {
       await clearContentCache();
       await clearReasons();
       return { ok: true };
+    }
+
+    case 'RESET_PROFILES': {
+      const m = await updateMemory((mem) => resetProfiles(mem));
+      return { tasks: listTasks(m) };
     }
 
     case 'CLEAR_MEMORY': {

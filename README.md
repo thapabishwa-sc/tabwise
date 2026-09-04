@@ -346,6 +346,12 @@ pass learns from the *gold* grouping, so it only ever measured learning from
 correct answers. A mechanism whose failure mode is "learning the wrong thing" was
 being validated by a test that never fed it a wrong thing.
 
+Three ways to undo, because the useful one is in the middle. A single **×**
+removes one signal. **Forget what it recognizes** clears every profile while
+keeping the names you chose and the pages you filed — for when grouping has gone
+wrong and you would rather restart the recognizing than lose your vocabulary.
+**Forget everything** drops those too.
+
 **Settings → What it has learned** shows every task as a list of the individual
 signals it is recognized by — work items, words, places — each removable with
 its own **×**. Removing one is usually better than forgetting the whole task: a
@@ -514,7 +520,7 @@ Company-specific config isn't baked into the extension. Apply it at runtime via
 | Internal host labels | One group per cluster | `cluster` (services on a cluster share a group) / `subdomain` (one per service) / `host` / `ai`. |
 | Service name tokens | (built-in list) | Trailing hostname parts naming a service rather than a cluster (`dl`, `da`, `jumper`, `grafana`, …). |
 | Pinned rules | (above) | Force URLs into fixed groups. |
-| What it has learned | — | Review, edit and forget learned tasks (not a setting; a list). |
+| What it has learned | — | Review, edit, reset or forget learned tasks (not a setting; a list). |
 
 Keyboard shortcut: **Alt+Shift+G** — group all tabs now.
 
@@ -550,8 +556,8 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 None of these need a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 258 checks — the decisions
-node scripts/test-runtime.mjs    # 28 checks — that the code carrying them out runs
+node scripts/test-grouping.mjs   # 264 checks — the decisions
+node scripts/test-runtime.mjs    # 33 checks — that the code carrying them out runs
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 

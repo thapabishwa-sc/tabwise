@@ -16,7 +16,7 @@ import { isInternalHost, subdomainGroupLabel } from '../lib/url.js';
 import { consolidateLabels } from '../lib/aiGrouper.js';
 import {
   emptyMemory, observe, learnRename, learnMove, forgetTask,
-  forgetFeature, addFeature, renameTask, wordFeature,
+  forgetFeature, addFeature, renameTask, wordFeature, resetProfiles,
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
 import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
@@ -702,6 +702,38 @@ const authGroup = [
     [recallForTabs(taught, [pages[0]]) && recallForTabs(taught, [pages[0]]).label,
       recallForTabs(taught, [pages[1]])],
     ['Tenant Onboarding', null]);
+}
+
+// --- A polluted profile cannot be rescued, only dropped ---------------------
+
+// The reported case survived the first attempt at fixing it. Dropping profiles
+// that were never user-named missed this sequence: an automatic pass pollutes a
+// profile, THEN the user renames the group, so the profile is userNamed AND
+// wrong. Nothing recorded which features came from a person and which from a
+// guess, so there is no honest way to separate them.
+{
+  const onboarding = { id: 1, title: 'NG-SaaS onboarding offboarding', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding' };
+  const upgrade = { id: 2, title: 'NGSaaS 7.0.0 Upgrade', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/5042962780/NGSaaS+Upgrade' };
+
+  let m = observe(emptyMemory(), 'Saas Work', [onboarding, upgrade]); // a guess
+  m = learnRename(m, 'Saas Work', 'NGSaaS', [onboarding, upgrade]);   // then a rename
+  check('a renamed profile is user-named even when a guess built it',
+    listTasks(m)[0].userNamed, true);
+  check('and it recalls both halves of the wrong grouping',
+    [recallForTabs(m, [onboarding]).label, recallForTabs(m, [upgrade]).label],
+    ['NGSaaS', 'NGSaaS']);
+
+  // Which is why the only honest move is to drop the profile and keep what was
+  // unambiguously the user's.
+  m = learnMove(m, { id: 3, title: 'x', url: 'https://example.com/reading/thing' }, 'Reading');
+  const reset = resetProfiles(m);
+  check('resetting drops every profile', listTasks(reset).length, 0);
+  check('so neither page is recalled any more',
+    [recallForTabs(reset, [onboarding]), recallForTabs(reset, [upgrade])], [null, null]);
+  check('the name you chose still replaces the proposed one',
+    resolveAlias(reset, 'Saas Work'), 'NGSaaS');
+  check('and a page you filed is still filed there',
+    recallPin(reset, { url: 'https://example.com/reading/thing' }), 'Reading');
 }
 
 // --- Editing what a task has learned ---------------------------------------

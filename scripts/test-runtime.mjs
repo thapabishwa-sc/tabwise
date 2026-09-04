@@ -227,6 +227,51 @@ await withChrome({ tabs: WORK_TABS }, async () => {
   }
 });
 
+// --- a stale profile from an older version must not survive ----------------
+
+// The reported bug, end to end: a memory written before profiles were cleaned
+// up, holding one profile that had absorbed two unrelated Confluence pages and
+// then been renamed. Loading it must not group those pages together.
+await withChrome({
+  tabs: [
+    { id: 1, title: 'NG-SaaS onboarding offboarding - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding' },
+    { id: 2, title: 'NGSaaS 7.0.0 Upgrade - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/5042962780/NGSaaS+7.0.0+Upgrade' },
+  ],
+}, async (state) => {
+  storage.invalidateCache();
+  taskMemory.invalidateMemoryCache();
+  state.local.taskMemory = {
+    version: 6,
+    aliases: { 'Saas Work': 'NGSaaS' },
+    pins: { 'example.com/reading/thing': 'Reading' },
+    tasks: {
+      NGSaaS: {
+        userNamed: true,
+        hits: 4,
+        features: [
+          'opaque:acme.atlassian.net/2758606863',
+          'opaque:acme.atlassian.net/5042962780',
+          'word:onboarding', 'word:upgrade', 'word:saas',
+        ],
+      },
+    },
+  };
+
+  await tabManager.organizeAllTabs();
+  const grouping = state.grouping();
+  check('the two pages are no longer in one group', grouping.size, 2);
+  ok('and each is on its own',
+    [...grouping.values()].every((ids) => ids.length === 1),
+    `grouping: ${JSON.stringify([...grouping])}`);
+
+  const memory = await taskMemory.loadMemory();
+  check('the stale profile is gone', taskMemory.listTasks(memory).length, 0);
+  check('the rename survives as an alias',
+    taskMemory.resolveAlias(memory, 'Saas Work'), 'NGSaaS');
+  check('and so does a filed page',
+    taskMemory.recallPin(memory, { url: 'https://example.com/reading/thing' }), 'Reading');
+});
+
 // --- Report ----------------------------------------------------------------
 
 console.log(`\n${pass} passed, ${failures.length} failed`);

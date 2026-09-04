@@ -289,6 +289,13 @@ async function loadMemoryList() {
 }
 
 btnRefreshMemory.addEventListener('click', loadMemoryList);
+const btnResetProfiles = document.getElementById('btn-reset-profiles');
+btnResetProfiles.addEventListener('click', async () => {
+  const r = await chrome.runtime.sendMessage({ type: 'RESET_PROFILES' });
+  renderMemory(r.tasks);
+  showToast('Forgot every profile. Your names and filed pages are kept.');
+});
+
 btnClearMemory.addEventListener('click', async () => {
   const r = await chrome.runtime.sendMessage({ type: 'CLEAR_MEMORY' });
   renderMemory(r.tasks);
