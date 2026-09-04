@@ -601,6 +601,54 @@ const authGroup = [
   check('and it says it learned that', warm.assignments.get(1).reason, 'learned');
 }
 
+// --- A task is its work, not the place it lives -----------------------------
+
+// A profile used to store cumulative path prefixes. One Confluence page
+// contributed five of them against three real signals, and since a profile is
+// scored with no rarity discount, an unrelated page in the same wiki space
+// matched five for a container score of 5.35 and was recalled as that task.
+// Memory was doing domain grouping — the most durable kind, because a learned
+// mistake outlives the pass that made it.
+{
+  const page = [{
+    id: 1,
+    title: 'Onboarding guide - Confluence',
+    url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding+guide',
+  }];
+  const m = observe(emptyMemory(), 'Tenant Onboarding', page, { userNamed: true });
+  const stored = listTasks(m)[0].features;
+
+  check('a profile stores no path prefixes',
+    stored.some((f) => f.startsWith('path:')), false);
+  check('nor the host', stored.some((f) => f.startsWith('host:')), false);
+  check('it stores the work item and the words',
+    stored.slice().sort(), ['opaque:2758606863', 'word:guide', 'word:onboarding']);
+
+  check('an unrelated page in the same wiki space is not recalled',
+    recallForTabs(m, [{
+      id: 9,
+      title: 'Upgrade guide - Confluence',
+      url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/3311882244/Upgrade+guide',
+    }]), null);
+
+  // What must keep working: the same work item, and the same subject on a
+  // completely different host — which is the whole point of a profile.
+  check('the same page is still recalled by its work item',
+    recallForTabs(m, [{
+      id: 9, title: 'Onboarding guide',
+      url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding+guide',
+    }]).label, 'Tenant Onboarding');
+  check('other work on the same subject is recalled across hosts',
+    recallForTabs(m, [{
+      id: 9, title: 'Tenant onboarding runbook',
+      url: 'https://other.example.com/x/onboarding-guide',
+    }]).label, 'Tenant Onboarding');
+  check('something unrelated is not',
+    recallForTabs(m, [{
+      id: 9, title: 'Best headphones 2026', url: 'https://nytimes.com/wirecutter/x',
+    }]), null);
+}
+
 // --- Editing what a task has learned ---------------------------------------
 
 // The useful unit of correction is often one bad signal, not the whole task: a

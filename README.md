@@ -340,9 +340,15 @@ that word is gone. A removed signal is also **never learned again**, even if the
 same tabs come back, or editing would be futile. Words can be added by hand for
 a task that keeps missing something, and a task can be renamed in place.
 
-A task is recognized by its work items first (decisive), then by subject words
-and paths, which have to add up — any two tabs on `docs.google.com` share a
-host, and that is precisely the inference this project exists to stop making.
+A task is recognized by its **work items** (decisive) and its **words** (several
+must agree). Deliberately not by where it lives: hosts and path prefixes are not
+stored in a profile at all. They used to be, and they were most of what a
+profile held — one Confluence page contributed five cumulative prefixes against
+three real signals — which meant an unrelated page in the same wiki space
+matched five of them and was recalled as that task. Memory was doing domain
+grouping, and a learned mistake outlives the pass that made it. Removing them
+cost the benchmark's warm score nothing, which is the clearest evidence they
+were never carrying real information.
 Profiles are stored in the engine's own feature vocabulary and scored with its
 weight table, so there is one definition of what evidence is worth rather than
 two that drift apart. See everything it has learned, and forget any of it, under
