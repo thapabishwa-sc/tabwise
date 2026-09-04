@@ -541,16 +541,26 @@ options/             # settings page
 icons/               # icon.svg source + build-icons.sh (regenerates the PNGs)
 scripts/package.sh   # build a Web Store zip
 scripts/test-grouping.mjs  # unit checks for the grouping logic (node, no browser)
+scripts/test-runtime.mjs   # runs the Chrome-facing code against a fake Chrome
+scripts/fake-chrome.mjs    # in-memory tabs, groups and storage for the above
 scripts/bench.mjs          # scores grouping quality against labelled fixtures
 scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 ```
 
-Neither script needs a browser or the model:
+None of these need a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 258 checks
+node scripts/test-grouping.mjs   # 258 checks — the decisions
+node scripts/test-runtime.mjs    # 28 checks — that the code carrying them out runs
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
+
+The split earned itself. 258 logic checks passed while `organizeAllTabs` threw
+`ReferenceError: learned is not defined` on its first line of real work: a stale
+identifier is valid syntax, `node --check` says nothing about it, and no test had
+ever executed the code that touches tabs. `test-runtime.mjs` installs a fake
+Chrome and runs those entry points, so "it grouped nothing because it crashed"
+is now a test failure rather than something to be noticed in use.
 
 ## Does the AI learn?
 
