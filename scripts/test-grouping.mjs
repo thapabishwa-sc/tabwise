@@ -665,6 +665,45 @@ const authGroup = [
     }]), null);
 }
 
+// --- Only what you decide is learned ----------------------------------------
+
+// Reported: two unrelated Confluence pages kept being grouped together even
+// after the scoring that had merged them was fixed. The scoring WAS fixed —
+// those two pages now score 0.00 — but the earlier mistake had been learned,
+// and a profile holding both page ids and both "onboarding" and "upgrade"
+// recalled the same task for either kind of page. A profile is a magnet: it
+// pulls in more tabs, which are grouped under it, which teaches it further.
+//
+// The benchmark could not have caught this. Its warm pass learns from the GOLD
+// grouping, so it only ever measured learning from correct answers.
+{
+  const pages = [
+    { id: 1, title: 'NG-SaaS onboarding offboarding - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding' },
+    { id: 2, title: 'NGSaaS 7.0.0 Upgrade - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/5042962780/NGSaaS+7.0.0+Upgrade' },
+  ];
+  check('the two pages from the report are not related',
+    buildContext(pages).relate(1, 2).related, false);
+  check('and are not clustered',
+    clusterTabs(pages).map((c) => c.tabs.map((t) => t.id)), [[1], [2]]);
+
+  // A profile that had absorbed both is exactly what kept them together, and
+  // is what an automatic grouping used to produce.
+  const polluted = observe(emptyMemory(), 'Saas Work', pages);
+  check('such a profile recalls BOTH pages, which is the trap',
+    [recallForTabs(polluted, [pages[0]]).label, recallForTabs(polluted, [pages[1]]).label],
+    ['Saas Work', 'Saas Work']);
+  check('and it is marked as never user-named, so migration drops it',
+    !!listTasks(polluted)[0].userNamed, false);
+
+  // What a user teaches is kept and marked, which is what survives migration.
+  const taught = observe(emptyMemory(), 'Tenant Onboarding', [pages[0]], { userNamed: true });
+  check('a task you named is marked as yours', listTasks(taught)[0].userNamed, true);
+  check('and it recalls only the page it was taught',
+    [recallForTabs(taught, [pages[0]]) && recallForTabs(taught, [pages[0]]).label,
+      recallForTabs(taught, [pages[1]])],
+    ['Tenant Onboarding', null]);
+}
+
 // --- Editing what a task has learned ---------------------------------------
 
 // The useful unit of correction is often one bad signal, not the whole task: a

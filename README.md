@@ -323,14 +323,28 @@ Three things deliberately bypass it, and it is worth being clear why:
 
 Grouping without memory is grouping that argues with you every morning: a
 correction you made yesterday is silently re-derived away today. So corrections
-are recorded ([`lib/taskMemory.js`](lib/taskMemory.js)):
+are recorded ([`lib/taskMemory.js`](lib/taskMemory.js)) — and *only* corrections:
 
 | You do this | It learns |
 |---|---|
 | Rename a group | Your name replaces the proposed one wherever that work is recognized again, and the group's profile carries over so it *is* recognized again. |
 | Drag a tab into a group | That page is pinned there — no automatic pass may move it — and the group learns that pages like it belong. |
 | Capture a task (**+ Task**) | Both the name and the membership are yours, so it becomes the strongest profile of all. |
-| Nothing | Groups it made are still profiled weakly, so a task that recurs is recognized rather than re-derived. |
+| Nothing | **Nothing is learned.** A pass never teaches itself. |
+
+Automatic groupings used to be learned too, so a recurring task would be
+recognized without an AI call. That was a bad trade. One wrong grouping became
+a permanent profile, and a profile is a magnet — it pulls in more tabs, which
+are grouped under it, which teaches it further. A real one was found holding two
+unrelated Confluence pages along with both "onboarding" and "upgrade", so every
+page of either kind recalled the same task, and fixing the scoring that
+originally merged them changed nothing. Memory now records only what you decide:
+a rename, a drag, a captured task.
+
+The benchmark could not have caught that, and it is worth knowing why: its warm
+pass learns from the *gold* grouping, so it only ever measured learning from
+correct answers. A mechanism whose failure mode is "learning the wrong thing" was
+being validated by a test that never fed it a wrong thing.
 
 **Settings → What it has learned** shows every task as a list of the individual
 signals it is recognized by — work items, words, places — each removable with
@@ -534,7 +548,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 252 checks
+node scripts/test-grouping.mjs   # 258 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 
