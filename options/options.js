@@ -127,24 +127,41 @@ const memoryListEl = document.getElementById('memory-list');
 const btnRefreshMemory = document.getElementById('btn-refresh-memory');
 const btnClearMemory = document.getElementById('btn-clear-memory');
 
-/** Group a task's raw feature keys into the three kinds worth showing. */
+/**
+ * Group a task's raw feature keys into the kinds worth showing separately.
+ *
+ * Tickets and pages are both decisive identities, but they read completely
+ * differently: "SASOBD-603" tells you what it is, while a generated page id is
+ * a meaningless number unless you know it only ever matches that one page.
+ * Lumping them together made the list look like it was full of noise.
+ */
 function groupSignals(features) {
-  const out = { id: [], word: [], place: [] };
+  const out = { ticket: [], page: [], word: [], tag: [] };
   for (const key of features || []) {
     const kind = key.slice(0, key.indexOf(':'));
     const value = key.slice(key.indexOf(':') + 1);
-    if (kind === 'ref' || kind === 'opaque' || kind === 'item') out.id.push([key, value]);
-    else if (kind === 'word') out.word.push([key, value]);
-    else out.place.push([key, value]);
+    if (kind === 'ref') out.ticket.push([key, value, value]);
+    else if (kind === 'opaque' || kind === 'item') {
+      // Namespaced as host/id — show the id, keep the host for the tooltip.
+      const slash = value.lastIndexOf('/');
+      const host = slash === -1 ? '' : value.slice(0, slash);
+      const id = slash === -1 ? value : value.slice(slash + 1);
+      out.page.push([key, id, host]);
+    } else if (kind === 'word') out.word.push([key, value, value]);
+    else out.tag.push([key, value, value]);
   }
   return out;
 }
 
-const SIGNAL_HELP = {
-  id: 'A work item: a ticket, a pull request, a document. Decisive on its own.',
-  word: 'A distinctive word. Several must agree to match.',
-  place: 'A host or path this task lives in. Weak on its own.',
-};
+const SIGNAL_KINDS = [
+  ['ticket', 'tickets', 'A ticket or pull request. Decisive on its own.'],
+  ['page', 'pages', 'One specific page or document. It only ever matches that exact page, '
+    + 'so the number means nothing on its own — and it is safe to remove if you would '
+    + 'rather this task were recognized by its words.'],
+  ['word', 'words', 'A distinctive word. Several must agree before they match.'],
+  ['tag', 'tags', 'A bracketed label from a title, such as an environment or region. '
+    + 'Weak: it can support a match but never make one.'],
+];
 
 function renderMemory(tasks) {
   memoryListEl.innerHTML = '';
@@ -214,21 +231,24 @@ function renderMemory(tasks) {
     const sig = document.createElement('div');
     sig.className = 'mem-sig';
 
-    for (const kind of ['id', 'word', 'place']) {
+    for (const [kind, heading, help] of SIGNAL_KINDS) {
       if (signals[kind].length === 0) continue;
       const group = document.createElement('div');
       group.className = 'sig-group';
 
       const label = document.createElement('span');
       label.className = 'sig-label';
-      label.textContent = kind === 'id' ? 'items' : kind === 'word' ? 'words' : 'places';
-      label.title = SIGNAL_HELP[kind];
+      label.textContent = heading;
+      label.title = help;
       group.appendChild(label);
 
-      for (const [key, value] of signals[kind]) {
+      for (const [key, shown, context] of signals[kind]) {
         const chip = document.createElement('span');
-        chip.className = `chip ${kind}`;
-        chip.append(document.createTextNode(value));
+        chip.className = `chip ${kind === 'ticket' || kind === 'page' ? 'id' : kind === 'word' ? 'word' : 'place'}`;
+        chip.append(document.createTextNode(shown));
+        chip.title = kind === 'page' && context
+          ? `Matches only this page on ${context}`
+          : help;
 
         const x = document.createElement('button');
         x.textContent = '×';

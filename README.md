@@ -341,7 +341,13 @@ same tabs come back, or editing would be futile. Words can be added by hand for
 a task that keeps missing something, and a task can be renamed in place.
 
 A task is recognized by its **work items** (decisive) and its **words** (several
-must agree). Deliberately not by where it lives: hosts and path prefixes are not
+must agree). A work item is either a ticket, which reads as itself
+("SASOBD-603"), or one specific page, which is a generated id and reads as a
+meaningless number — it matches that one page and nothing else, which is why it
+is harmless and why the list labels the two kinds separately. Generated ids are
+namespaced by host: un-namespaced, a Confluence page id and an unrelated site's
+numeric path segment were the same identity, worth 3.0 and decisive, and merged
+two tabs sharing nothing but a coincidence of digits. Deliberately not by where it lives: hosts and path prefixes are not
 stored in a profile at all. They used to be, and they were most of what a
 profile held — one Confluence page contributed five cumulative prefixes against
 three real signals — which meant an unrelated page in the same wiki space
@@ -528,7 +534,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 243 checks
+node scripts/test-grouping.mjs   # 252 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 

@@ -361,8 +361,23 @@ check('a reference is an identity',
   identitiesOf({ id: 1, title: 'x', url: 'https://any.host/thing/PLAT-88' }), ['ref:PLAT-88']);
 check('a standard is not an identity',
   identitiesOf({ id: 1, title: 'UTF-8 notes', url: 'https://any.host/d?charset=UTF-8' }), []);
-check('a generated id is an identity',
-  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/pages/2758606863/thing' }), ['opaque:2758606863']);
+check('a generated id is an identity, namespaced by its host',
+  identitiesOf({ id: 1, title: 'x', url: 'https://any.host/pages/2758606863/thing' }),
+  ['opaque:any.host/2758606863']);
+// A generated id identifies a document only within the site that made it.
+// Un-namespaced, a Confluence page id and an unrelated site's numeric path
+// segment were the same identity — worth 3.0, decisive — and merged two tabs
+// that shared nothing but a coincidence of digits.
+check('the same digits on another site are a different identity',
+  clusterTabs([
+    { id: 1, title: 'Onboarding guide', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding' },
+    { id: 2, title: 'Quarterly revenue', url: 'https://elsewhere.com/reports/2758606863/revenue' },
+  ]).map((c) => c.tabs.map((t) => t.id)), [[1], [2]]);
+check('while two tabs of the same page still share one',
+  clusterTabs([
+    { id: 1, title: 'Onboarding guide', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding' },
+    { id: 2, title: 'Onboarding guide - comments', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding?focus=c1' },
+  ]).map((c) => c.tabs.map((t) => t.id)), [[1, 2]]);
 check('a readable slug is not an identity',
   identitiesOf({ id: 1, title: 'x', url: 'https://any.host/docs/getting-started-2' }), []);
 check('namesWork reflects that', namesWork({ id: 1, title: 'PLAT-88 x', url: 'https://a.b/c' }), true);
@@ -622,7 +637,8 @@ const authGroup = [
     stored.some((f) => f.startsWith('path:')), false);
   check('nor the host', stored.some((f) => f.startsWith('host:')), false);
   check('it stores the work item and the words',
-    stored.slice().sort(), ['opaque:2758606863', 'word:guide', 'word:onboarding']);
+    stored.slice().sort(),
+    ['opaque:acme.atlassian.net/2758606863', 'word:guide', 'word:onboarding']);
 
   check('an unrelated page in the same wiki space is not recalled',
     recallForTabs(m, [{
