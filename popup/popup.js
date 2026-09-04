@@ -312,6 +312,21 @@ function showMovePicker(row, tabId, currentGroupTitle) {
 // ACTIONS
 // =============================================
 
+// A full pass reads every page before grouping anything, which takes a moment
+// on a big window. Without this the button just sits there looking broken.
+const PHASE_TEXT = {
+  loading: (d, t) => `Waiting for ${t} tab${t === 1 ? '' : 's'} to finish loading…`,
+  reading: (d, t) => `Reading pages… ${d}/${t}`,
+  grouping: () => 'Grouping…',
+  done: () => '',
+};
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (!msg || msg.type !== 'ORGANIZE_PROGRESS') return;
+  const fn = PHASE_TEXT[msg.phase];
+  if (fn) statusEl.textContent = fn(msg.done, msg.total);
+});
+
 btnTidy.addEventListener('click', async () => {
   btnTidy.disabled = true;
   btnTidy.textContent = 'Tidying…';
@@ -339,7 +354,10 @@ btnOrganize.addEventListener('click', async () => {
   if (res && res.mode === 'fallback') {
     statusEl.textContent = `AI not ready — grouped ${res.organized} by site. Prepare AI below for topic grouping.`;
   } else if (res && typeof res.organized === 'number') {
-    statusEl.textContent = `Grouped ${res.organized} tab${res.organized === 1 ? '' : 's'}.`;
+    const read = res.readPages
+      ? ` after reading ${res.readPages} page${res.readPages === 1 ? '' : 's'}`
+      : '';
+    statusEl.textContent = `Grouped ${res.organized} tab${res.organized === 1 ? '' : 's'}${read}.`;
   }
   await init();
 });

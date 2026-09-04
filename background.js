@@ -40,6 +40,9 @@ import {
   loadMemory, updateMemory, clearMemory, forgetTask, listTasks,
   invalidateMemoryCache,
 } from './lib/taskMemory.js';
+import {
+  hasContentAccess, revokeContentAccess, forgetContent, clearContentCache,
+} from './lib/pageContent.js';
 
 // --- Debounce: wait for a tab to settle before grouping it ---
 const pendingUpdates = new Map();
@@ -83,6 +86,8 @@ chrome.tabs.onCreated.addListener((tab) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  // A navigation invalidates whatever was read from the old page.
+  if (changeInfo.url) forgetContent(tabId);
   // 'complete' means the page has loaded; a title change means it has told us
   // what it is. Either is enough to judge it; a bare URL change is not.
   if (changeInfo.status === 'complete' || changeInfo.title) debounceTabUpdate(tabId);
@@ -94,6 +99,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     pendingUpdates.delete(tabId);
   }
   forgetTabOrigin(tabId);
+  forgetContent(tabId);
 });
 
 // --- Accordion: collapse groups that lose focus as you switch tabs ---
@@ -152,6 +158,18 @@ async function handleMessage(message) {
       }
       return snapshot;
     }
+
+    case 'CONTENT_ACCESS':
+      return { granted: await hasContentAccess() };
+
+    case 'REVOKE_CONTENT_ACCESS': {
+      await revokeContentAccess();
+      return { granted: await hasContentAccess() };
+    }
+
+    case 'CLEAR_CONTENT_CACHE':
+      await clearContentCache();
+      return { ok: true };
 
     case 'GET_MEMORY':
       return { tasks: listTasks(await loadMemory()) };

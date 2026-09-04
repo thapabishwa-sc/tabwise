@@ -68,6 +68,10 @@ group or drag a tab, and that correction sticks.
   `prod-eu-1-kibana` are one group; `prod-ap-1-grafana` is another.
 - **No guessing while a tab loads** — a new tab stays uncategorized until it has
   a real title. Nothing is placed on its hostname alone.
+- **Reads the page, if you let it** — a summary of each page (headings, meta
+  description, the start of the main text) so an untitled document or a
+  dashboard called "Grafana" still has a description. Off until you grant it in
+  Settings; see [Privacy](#privacy).
 - **Quick-switcher search** — filter tabs across all groups; Enter jumps to the
   first match.
 - **Natural-language grouping** — "group by project", "put all AWS tabs
@@ -207,11 +211,19 @@ Three structural details do a lot of work:
   and merges every ticket in the repo.
 
   The leaf is also read as subject matter in its own right, which matters more
-  than it sounds: page content is never read, so a **title is the main
-  description of a page** — and when a title is just a product name
-  ("Confluence", "Grafana"), which is the state a tab is in before an app sets
-  its title and permanently for some dashboards, the slug is the only thing
-  left. Without it those pages fell all the way back to hostname grouping.
+  than it sounds: when a title is just a product name ("Confluence", "Grafana")
+  — the state a tab is in before an app sets its title, and permanently for some
+  dashboards — the slug may be the only thing left. Without it those pages fell
+  all the way back to hostname grouping.
+
+**Page content**, when you have granted it, joins the title as subject matter:
+headings, the meta description, and a bounded slice of the main text. It is
+weighted below the title and capped in number, because a title is written to
+describe a page while body text is whatever happened to be at the top of it, and
+a long article would otherwise swamp every other signal. Group *names* use only
+the first, most deliberate part — body text has the longest words and none of
+the meaning, and will happily name a page about scheduler latency
+"Regressions Replacement".
 - **A path ending in a bare number is item N of its container.** The only thing
   telling `/pull/1` from `/pull/2` apart is the number, so it counts as an
   identity despite being far too short to look like one.
@@ -284,6 +296,20 @@ Profiles are stored in the engine's own feature vocabulary and scored with its
 weight table, so there is one definition of what evidence is worth rather than
 two that drift apart. See everything it has learned, and forget any of it, under
 **Settings → What it has learned**.
+
+## What "Group all tabs" does, in order
+
+A full pass finishes each stage before starting the next, rather than grouping
+tabs as it goes:
+
+1. **Waits for loading tabs** (up to 8s, and never for a discarded tab). A tab
+   judged mid-load is judged on a placeholder title and an unbuilt page.
+2. **Reads every page**, across every window, before grouping any of them — so
+   no window is decided on less information than another.
+3. **Decides, then applies**, one window at a time.
+
+Progress for each phase shows in the popup, since reading a large window takes
+a moment.
 
 ## Reporting a grouping problem
 
@@ -398,6 +424,8 @@ Company-specific config isn't baked into the extension. Apply it at runtime via
 |---|---|---|
 | When to group | Automatic | `auto` (as tabs load) or `manual` (only when you ask). |
 | AI groups by project/task | on | Bias AI labels toward work-streams, not generic topics. |
+| Page access | not granted | Optional permission to read page summaries. Off until granted; revocable. |
+| Use page content when grouping | on | Keep the permission but stop using it, without revoking. |
 | Let AI merge groups | on | After grouping, ask the model which groups are one piece of work. |
 | Follow link trails | on | A tab opened from another joins that tab's group. |
 | Accordion | on | Collapse inactive groups as you switch tabs. |
@@ -421,6 +449,7 @@ background.js        # service worker: events, accordion, message routing
 lib/resolve.js       # the grouping pipeline, pure and benchmarkable
 lib/context.js       # scores how related any two tabs are, with no site rules
 lib/refs.js          # what counts as a work-item reference (vs. UTF-8, Q3-2026)
+lib/pageContent.js   # the ONLY file that can read a page; optional permission
 lib/affinity.js      # turns those pairwise scores into clusters
 lib/taskSignal.js    # per-site knowledge, used only to phrase AI prompt hints
 lib/taskMemory.js    # what it has learned: your names, your pins, task profiles
@@ -441,7 +470,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 187 checks
+node scripts/test-grouping.mjs   # 198 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 
@@ -474,17 +503,33 @@ fail, and letting unrelated earlier decisions leak into later ones.
 
 ## Privacy
 
-All AI runs on-device via Chrome's built-in model. The extension requests only
-`tabs`, `tabGroups`, and `storage` — no host permissions, no network calls of
-its own, and it never reads page content: everything it knows comes from tab
-titles and URLs.
+All AI runs on-device via Chrome's built-in model. **There are no network
+requests anywhere in this extension** — nothing it reads can leave the machine,
+because there is no code that could send it.
 
-What that costs, honestly: **a page is only as groupable as its title and URL
-say it is.** A page whose title is generic *and* whose URL is an opaque id — an
-untitled Google Doc, say — carries no description at all, and will sit on its
-own until you file it somewhere, which teaches it for next time. Reading page
-content would fix that, and would mean requesting access to the content of every
-page you visit. That trade is not worth making silently, so it is not made.
+It installs with `tabs`, `tabGroups` and `storage`, and **no host permissions at
+all**. On those permissions alone it never sees page content; everything it
+knows comes from tab titles and URLs.
+
+**Page access is optional and off by default.** `scripting` and `<all_urls>` are
+declared as *optional* permissions, requested only when you press **Grant
+access** in Settings, and revoking puts everything back exactly as it was. When
+granted, what gets read is a summary, not the page:
+
+- `og:title` and the meta description
+- up to 8 `h1`/`h2` headings
+- the first 600 characters of `<main>`, `<article>`, or the body
+
+Never form fields, never inputs, never the full document. It is cached in
+`chrome.storage.session`, which is cleared when the browser closes, and
+invalidated the moment a tab navigates. Revoking access clears the cache too.
+
+Worth being clear about the trade you are making: granting `<all_urls>` means
+Chrome will tell you the extension can read data on every site you visit, and
+that is true — it is what makes an untitled document groupable. Whether that is
+worth it is a judgement about how much you trust this code, and the code is
+right here: [`lib/pageContent.js`](lib/pageContent.js) is the only file that can
+read a page, and it is 200 lines.
 
 Settings, saved sessions and everything it has learned live in
 `chrome.storage.local` on your machine. Learned tasks store task keys, hostnames

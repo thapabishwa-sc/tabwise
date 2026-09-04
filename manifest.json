@@ -37,5 +37,11 @@
       },
       "description": "Group all tabs now"
     }
-  }
+  },
+  "optional_permissions": [
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
+  ]
 }

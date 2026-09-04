@@ -204,6 +204,41 @@
     </div>
   </div>
 
+  <!-- Page access -->
+  <div class="section">
+    <h2>Reading page content</h2>
+    <p style="font-size:12px;color:#6a6a8a">
+      A title is usually enough to say what a page is about — but not always. An
+      untitled document, a dashboard called "Grafana", an app that never sets its
+      title: those tabs have no description at all, and end up grouped by little
+      more than their address.
+      <br><br>
+      Granting page access lets a <b>summary</b> of each page be read instead:
+      its headings, its meta description, and the first few hundred characters of
+      the main text. Never form fields, never the whole page. It stays on this
+      machine — the extension makes no network requests of any kind — and is
+      cached only until the browser closes.
+      <br><br>
+      This is the extension's <b>only</b> permission that touches page data, it is
+      <b>off until you grant it</b>, and revoking it puts everything back exactly
+      as it was.
+    </p>
+    <div class="field">
+      <div>
+        <label>Page access</label>
+        <div class="hint" id="content-access-hint">Checking…</div>
+      </div>
+      <button class="btn" id="btn-content-access">Grant access</button>
+    </div>
+    <div class="field">
+      <div>
+        <label>Use page content when grouping</label>
+        <div class="hint">Keep the permission but stop using it, without revoking. No effect until access is granted.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="readPageContent"><span class="slider"></span></label>
+    </div>
+  </div>
+
   <!-- Learned tasks -->
   <div class="section">
     <h2>What it has learned</h2>

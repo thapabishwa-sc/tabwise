@@ -1,0 +1,37 @@
+{
+  "name": "page-content",
+  "description": "The same shape as generic-titles, but with a page summary attached to each tab — what lib/pageContent.js reads when page access is granted. Every tab here has a title that says nothing and a URL that says little or nothing, so this measures what content buys: the untitled document with an opaque URL is unreachable any other way.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    {
+      "id": 1, "gold": "Tenant Onboarding", "title": "Confluence",
+      "url": "https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/x",
+      "content": "Tenant onboarding runbook . Steps to onboard a new tenant into NG-SaaS, including region selection and quota setup"
+    },
+    {
+      "id": 2, "gold": "Tenant Onboarding", "title": "Google Docs",
+      "url": "https://docs.google.com/document/d/1kQm7yTvB2xNpLr9WsEc/edit",
+      "content": "Tenant onboarding checklist . Onboarding tasks for each new tenant, owner sign-off and quota verification"
+    },
+    {
+      "id": 3, "gold": "Tenant Onboarding", "title": "Grafana",
+      "url": "https://grafana.acme.io/d/abc123/z",
+      "content": "Tenant onboarding duration . Time to onboard a tenant, by region"
+    },
+    {
+      "id": 4, "gold": "Invoice Dispute", "title": "Google Docs",
+      "url": "https://docs.google.com/document/d/9zXbQ2mWpLk4RtYv/edit",
+      "content": "Invoice dispute log . Disputed invoices awaiting credit notes and the finance contact for each"
+    },
+    {
+      "id": 5, "gold": "Invoice Dispute", "title": "Confluence",
+      "url": "https://acme.atlassian.net/wiki/spaces/FIN/pages/4419900012/y",
+      "content": "Invoice dispute process . How a disputed invoice is escalated and credited"
+    },
+    {
+      "id": 6, "gold": "Kernel Reading", "title": "LWN.net",
+      "url": "https://lwn.net/Articles/999123/",
+      "content": "Scheduler latency in recent kernels . A look at wakeup latency regressions in the CFS replacement"
+    }
+  ]
+}

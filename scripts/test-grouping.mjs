@@ -20,6 +20,7 @@ import {
 } from '../lib/taskMemory.js';
 import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
 import { redactUrl } from '../lib/tabManager.js';
+import { contentToText } from '../lib/pageContent.js';
 import { buildContext, extractFeatures, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
@@ -712,6 +713,70 @@ check('pin keys normalize host and trailing slash',
     (offered || []).some((l) => l.startsWith('prod-')), false);
   check('so two clusters survive a model that would have merged them',
     [...byLabel.keys()].filter((l) => l.startsWith('prod-')).length, 2);
+}
+
+// --- Page content, where a title says nothing ------------------------------
+
+// Some tabs genuinely cannot be grouped from title and URL: an untitled
+// document with an opaque id, a dashboard called after its product. Reading a
+// page summary is the only thing that reaches them.
+{
+  const bare = [
+    { id: 1, title: 'Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/x' },
+    { id: 2, title: 'Google Docs', url: 'https://docs.google.com/document/d/1kQm7yTvB2xNpLr9WsEc/edit' },
+    { id: 3, title: 'Google Docs', url: 'https://docs.google.com/document/d/9zXbQ2mWpLk4RtYv/edit' },
+  ];
+  check('without content these are unreachable',
+    clusterTabs(bare).map((c) => c.tabs.map((t) => t.id)), [[1], [2], [3]]);
+
+  const withContent = [
+    { ...bare[0], content: 'Tenant onboarding runbook . Steps to onboard a new tenant' },
+    { ...bare[1], content: 'Tenant onboarding checklist . Onboarding tasks per tenant' },
+    { ...bare[2], content: 'Invoice dispute log . Disputed invoices awaiting credit notes' },
+  ];
+  const got = clusterTabs(withContent);
+  check('content groups them by what the pages say',
+    got.map((c) => c.tabs.map((t) => t.id)), [[1, 2], [3]]);
+  check('and names them from it', nameCluster(got[0]), 'Tenant Onboarding');
+
+  // Content is evidence, but weaker evidence: a title is written to describe a
+  // page, body text is whatever happened to be at the top of it.
+  const weight = (tab) => extractFeatures(tab).features.get('word:widget');
+  check('a word in the title outweighs the same word in content',
+    weight({ id: 1, title: 'widget', url: 'https://x.com/a' })
+      > weight({ id: 1, title: '', url: 'https://x.com/a', content: 'widget' }), true);
+
+  // A long page must not swamp every other signal.
+  const many = Array.from({ length: 60 }, (_, i) => `distinctword${i}`).join(' ');
+  const contentWords = [...extractFeatures({ id: 1, title: '', url: 'https://x.com/a', content: many })
+    .features.keys()].filter((k) => k.startsWith('word:'));
+  check('content words are capped', contentWords.length <= 16, true);
+
+  // Naming reads only the deliberate first part, because body text has the
+  // longest words and none of the meaning.
+  check('naming ignores body text after the first part',
+    nameCluster({ key: null, tabs: [{
+      title: 'LWN.net',
+      url: 'https://lwn.net/Articles/999123/',
+      content: 'Scheduler latency in recent kernels . A look at wakeup latency regressions in the CFS replacement',
+    }] }), 'Scheduler Latency');
+}
+
+{
+  // The summary is assembled most-deliberate-first, which is what lets callers
+  // truncate it and still keep the descriptive part.
+  const text = contentToText({
+    ogTitle: 'Tenant onboarding runbook',
+    description: 'How to onboard a tenant',
+    headings: ['Region selection', 'Quota setup'],
+    body: 'Some body text that goes on for a while',
+  });
+  check('the og:title leads', text.startsWith('Tenant onboarding runbook'), true);
+  check('the description follows', text.indexOf('How to onboard') < text.indexOf('Region selection'), true);
+  check('headings precede body', text.indexOf('Quota setup') < text.indexOf('Some body text'), true);
+  check('an empty extraction is empty', contentToText(null), '');
+  check('missing parts are skipped',
+    contentToText({ headings: ['Only this'] }), 'Only this');
 }
 
 // --- A captured bug report must not carry secrets --------------------------

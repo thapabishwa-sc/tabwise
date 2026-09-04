@@ -24,6 +24,9 @@
  *
  * Each fixture is scored twice:
  *
+ * A fixture tab may carry `content`, standing in for a page summary read from a
+ * live tab, so grouping that depends on page content is testable here too.
+ *
  *   COLD — first sight, nothing learned. This is the deterministic floor: the
  *     on-device model is not available here, so any remaining error is a merge
  *     the model would have to make. Precision at 1.00 means the pipeline never
@@ -114,6 +117,9 @@ async function runFixture(file, { verbose, threshold }) {
     title: t.title,
     url: t.url,
     openerTabId: t.opener,
+    // A fixture may carry a page summary, standing in for what
+    // lib/pageContent.js reads from a live tab.
+    ...(t.content ? { content: t.content } : {}),
   }));
 
   // Mirrors lib/storage.js DEFAULTS. Drifting from the real defaults would mean

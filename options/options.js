@@ -2,6 +2,7 @@ const fields = {
   groupingMode: document.getElementById('groupingMode'),
   aiProjectMode: document.getElementById('aiProjectMode'),
   aiMergePass: document.getElementById('aiMergePass'),
+  readPageContent: document.getElementById('readPageContent'),
   collapseInactive: document.getElementById('collapseInactive'),
   respectManualGroups: document.getElementById('respectManualGroups'),
   minGroupSize: document.getElementById('minGroupSize'),
@@ -34,6 +35,7 @@ async function loadSettings() {
   fields.groupingMode.value = s.groupingMode === 'auto' ? 'auto' : 'manual';
   fields.aiProjectMode.checked = !!s.aiProjectMode;
   fields.aiMergePass.checked = s.aiMergePass !== false;
+  fields.readPageContent.checked = s.readPageContent !== false;
   fields.collapseInactive.checked = !!s.collapseInactive;
   fields.useOpenerAffinity.checked = s.useOpenerAffinity !== false;
   fields.respectManualGroups.checked = s.respectManualGroups !== false;
@@ -62,6 +64,7 @@ async function loadSettings() {
     .join('\n');
   refreshAiStatus();
   loadMemoryList();
+  refreshContentAccess();
 }
 
 // --- Save ---
@@ -94,6 +97,7 @@ btnSave.addEventListener('click', async () => {
     groupingMode: fields.groupingMode.value === 'auto' ? 'auto' : 'manual',
     aiProjectMode: fields.aiProjectMode.checked,
     aiMergePass: fields.aiMergePass.checked,
+    readPageContent: fields.readPageContent.checked,
     collapseInactive: fields.collapseInactive.checked,
     respectManualGroups: fields.respectManualGroups.checked,
     minGroupSize: Math.max(1, parseInt(fields.minGroupSize.value, 10) || 1),
@@ -193,6 +197,47 @@ btnClearMemory.addEventListener('click', async () => {
   const r = await chrome.runtime.sendMessage({ type: 'CLEAR_MEMORY' });
   renderMemory(r.tasks);
   showToast('Forgot every learned task.');
+});
+
+// --- Page access ---
+
+// chrome.permissions.request() only works inside a user gesture, so it is
+// called here in the click handler rather than routed through the service
+// worker, where it would silently fail.
+const CONTENT_PERMISSIONS = { permissions: ['scripting'], origins: ['<all_urls>'] };
+
+const btnContentAccess = document.getElementById('btn-content-access');
+const contentAccessHint = document.getElementById('content-access-hint');
+
+async function refreshContentAccess() {
+  let granted = false;
+  try {
+    granted = await chrome.permissions.contains(CONTENT_PERMISSIONS);
+  } catch { /* treat as not granted */ }
+
+  contentAccessHint.textContent = granted
+    ? 'Granted. Page summaries are read when grouping.'
+    : 'Not granted. Grouping uses tab titles and URLs only.';
+  contentAccessHint.style.color = granted ? '#7ee0a8' : '#6a6a8a';
+  btnContentAccess.textContent = granted ? 'Revoke access' : 'Grant access';
+  btnContentAccess.classList.toggle('danger', granted);
+  fields.readPageContent.disabled = !granted;
+  return granted;
+}
+
+btnContentAccess.addEventListener('click', async () => {
+  const granted = await chrome.permissions.contains(CONTENT_PERMISSIONS).catch(() => false);
+  if (granted) {
+    await chrome.runtime.sendMessage({ type: 'REVOKE_CONTENT_ACCESS' });
+    showToast('Page access revoked and cached content cleared.');
+  } else {
+    let ok = false;
+    try {
+      ok = await chrome.permissions.request(CONTENT_PERMISSIONS);
+    } catch { ok = false; }
+    showToast(ok ? 'Page access granted.' : 'Page access not granted.');
+  }
+  await refreshContentAccess();
 });
 
 // --- Capture a grouping problem as a test case ---
@@ -296,6 +341,7 @@ btnPrepare.addEventListener('click', async () => {
   }
   refreshAiStatus();
   loadMemoryList();
+  refreshContentAccess();
 });
 
 // --- Helpers ---
