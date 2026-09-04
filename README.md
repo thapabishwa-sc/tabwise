@@ -242,7 +242,20 @@ Three structural details do a lot of work:
   all the way back to hostname grouping.
 
 **Page content**, when you have granted it, joins the title as subject matter:
-headings, the meta description, and a bounded slice of the main text. It is
+headings, the meta description, and a bounded slice of the main text — with the
+app's own furniture stripped out first (`nav`, `header`, `footer`, `aside`,
+toolbars, dialogs). That last part is not a detail: every page of an app repeats
+its navigation, so reading it made two unrelated Confluence pages score 5.53 on
+"attachments", "templates" and "restrictions" and land in one group. Domain
+grouping arriving by a new route.
+
+Two further guards, because no selector list catches every app's furniture.
+Body-text agreement is capped, so it can carry a merge but never shout. And
+body-text agreement **between two pages of the same site does not count at
+all** — furniture belongs to a site, so only same-site pages can share it, while
+two pages on different hosts agreeing on their body text really are about the
+same thing. With three or more pages of one site open, its furniture is also
+detected by counting: a word in most of a host's page bodies is its navigation. It is
 weighted below the title and capped in number, because a title is written to
 describe a page while body text is whatever happened to be at the top of it, and
 a long article would otherwise swamp every other signal. Group *names* use only

@@ -228,10 +228,15 @@ check('opaque ids make poor labels', labelForKey('gdoc:abc123'), null);
 
 // --- Internal hosts stay deterministic; SaaS hosts do not ------------------
 
+// Internal-ness is claimed only by a private marker, a bare host, an IP, or
+// your own configuration. Deliberately NOT by hostname shape: an internal
+// cluster and a public shard are the same string pattern, and guessing from
+// the pattern turned `mail-1.google.com` into its own per-host group.
 for (const [url, expected] of [
   ['https://prod-eu-frankfurt-1-grafana.corp.example.com/', true],
   ['https://dev-qa3.corp.example.com/', true],
-  ['https://prod-db-01.example.com/', true],
+  ['https://prod-eu-1-kibana.acme.internal/', true],
+  ['https://box.intranet.example.com/', true],
   ['https://jenkins/job/x', true],
   ['https://10.0.4.12:9200/x', true],
   ['https://docs.google.com/document/d/a/edit', false],
@@ -244,6 +249,23 @@ for (const [url, expected] of [
 ]) {
   check(`isInternalHost ${new URL(url).hostname}`, isInternalHost(url), expected);
 }
+
+// A corpus of ordinary hostnames, none of which may be claimed as internal
+// infrastructure. Thirteen of these were, which is what "domain grouping is
+// active" looked like from the outside.
+for (const host of [
+  'mail-1.google.com', 's3-us-west-2.amazonaws.com', 'api-v2.stripe.com',
+  'chat-2.slack.com', 'node-01.datadoghq.com', 'my-app-1.vercel.app',
+  'ec2-52-1-2-3.compute-1.amazonaws.com', 'edge-3.cloudflare.com',
+  'teams-1.microsoft.com', 'app-1.hubspot.com', 'static-1.squarespace.com',
+  'cdn-1.example.com', 'web-2.medium.com', 'us02web.zoom.us', 'www2.example.com',
+  'prod-db-01.example.com',
+]) {
+  check(`public host is not infrastructure: ${host}`,
+    isInternalHost(`https://${host}/x`), false);
+}
+check('an internal host on a public-looking domain needs configuring',
+  isInternalHost('https://prod-eu-1-grafana.acme.io/x', ['acme.io']), true);
 
 check('configured internal domain is honored',
   isInternalHost('https://wiki.acme.io/x', ['acme.io']), true);
@@ -777,6 +799,76 @@ check('pin keys normalize host and trailing slash',
   check('an empty extraction is empty', contentToText(null), '');
   check('missing parts are skipped',
     contentToText({ headings: ['Only this'] }), 'Only this');
+}
+
+// --- The site name is the last resort, and only for a real group -----------
+
+// Naming a lone tab after its host is domain grouping with extra steps, and an
+// uncategorized tab is honest where a wrong group has to be corrected.
+{
+  const S = { minGroupSize: 1 };
+  const nothingKnown = { id: 1, title: 'Dashboard', url: 'https://widgets.example.com/' };
+
+  const one = await resolveGroups([nothingKnown], { settings: S, memory: emptyMemory() });
+  check('a lone tab nothing describes is left out of every group',
+    one.assignments.has(1), false);
+
+  // A group a link trail already assembled still needs a name, and the site is
+  // a reasonable last thing to fall back to.
+  const pair = await resolveGroups([
+    { id: 1, title: 'Dashboard', url: 'https://widgets.example.com/a' },
+    { id: 2, title: 'Dashboard', url: 'https://widgets.example.com/b', openerTabId: 1 },
+  ], { settings: S, memory: emptyMemory() });
+  check('a real group with no description falls back to the site',
+    [...pair.byLabel.values()], [[1, 2]]);
+  check('and is reported as such', pair.assignments.get(1).reason, 'host');
+}
+
+// --- An app's own furniture is not what its pages are about ----------------
+
+// Reported from real use: an onboarding guide, an onboarding ticket, an upgrade
+// guide and upgrade issues all ended up in one group. Every Confluence page
+// repeats the app's navigation and sidebar, so reading the page body made two
+// unrelated pages score 5.53 on "attachments", "templates" and "restrictions" —
+// domain grouping arriving by a new route.
+{
+  const furniture = 'Confluence Spaces Recently viewed Starred Templates Apps Create '
+    + 'Search People Calendars Analytics Space settings Page tree Comments Attachments '
+    + 'Restrictions Watch Share Export Edit';
+  const page = (subject) => `x . ${furniture} . ${subject}`;
+
+  const tabs = [
+    { id: 1, title: 'Onboarding guide - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding+guide', content: page('Steps to onboard a tenant') },
+    { id: 2, title: '[single-org] [ap-tokyo-1] customerpoc - onboarding', url: 'https://acme.atlassian.net/browse/SASOBD-603' },
+    { id: 3, title: 'Upgrade guide - Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/3311882244/Upgrade+guide', content: page('How to run a cluster upgrade') },
+    { id: 4, title: '[single-org] [ap-tokyo-1] acmecorp - upgrade failed', url: 'https://acme.atlassian.net/browse/SASUPG-211' },
+  ];
+  check('two pages of one app are not merged by the app\'s own chrome',
+    clusterTabs(tabs).map((c) => c.tabs.map((t) => t.id)), [[1, 2], [3, 4]]);
+
+  // The rule that makes this work: furniture belongs to a site, so only pages
+  // of the SAME site can share it. Two pages on different hosts agreeing on
+  // body text really are about the same thing.
+  const ctx = buildContext(tabs);
+  check('same-site body agreement alone does not relate two pages',
+    ctx.relate(1, 3).related, false);
+
+  const crossHost = [
+    { id: 1, title: 'Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/x', content: 'Tenant onboarding runbook . Steps to onboard a tenant' },
+    { id: 2, title: 'Grafana', url: 'https://grafana.acme.io/d/abc123/z', content: 'Tenant onboarding duration . Time to onboard a tenant by region' },
+  ];
+  check('cross-site body agreement does relate them',
+    buildContext(crossHost).relate(1, 2).related, true);
+
+  // With enough pages of one app open, its furniture is detectable by counting.
+  const manyPages = [1, 2, 3, 4].map((n) => ({
+    id: n,
+    title: `Page ${n} - Confluence`,
+    url: `https://acme.atlassian.net/wiki/spaces/EN/pages/100000${n}/p${n}`,
+    content: page(`Subject number ${n} alpha${n} beta${n}`),
+  }));
+  check('furniture is detected as such once several pages of a site are open',
+    clusterTabs(manyPages).length, 4);
 }
 
 // --- Reading pages must never hang -----------------------------------------

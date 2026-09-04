@@ -1,0 +1,25 @@
+{
+  "name": "app-chrome",
+  "description": "Two guides and two tickets, in one Atlassian tenant, with page content read. Every Confluence page repeats the app's navigation and sidebar, so reading the page body makes two unrelated pages look identical: they scored 5.53 on 'attachments', 'templates', 'restrictions' and 'calendars' and all four tabs collapsed into one group. Reported from real use as 'same domains are categorized together without pulling context'.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    {
+      "id": 1, "gold": "Tenant Onboarding", "title": "Onboarding guide - Confluence",
+      "url": "https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/Onboarding+guide",
+      "content": "Onboarding guide . Confluence Spaces Recently viewed Starred Templates Apps Create Search People Calendars Analytics Space settings Page tree Comments Attachments Restrictions Watch Share Export Edit . Steps to onboard a tenant"
+    },
+    {
+      "id": 2, "gold": "Tenant Onboarding", "title": "[single-org] [ap-tokyo-1] customerpoc - onboarding",
+      "url": "https://acme.atlassian.net/browse/SASOBD-603"
+    },
+    {
+      "id": 3, "gold": "Cluster Upgrade", "title": "Upgrade guide - Confluence",
+      "url": "https://acme.atlassian.net/wiki/spaces/EN/pages/3311882244/Upgrade+guide",
+      "content": "Upgrade guide . Confluence Spaces Recently viewed Starred Templates Apps Create Search People Calendars Analytics Space settings Page tree Comments Attachments Restrictions Watch Share Export Edit . How to run a cluster upgrade"
+    },
+    {
+      "id": 4, "gold": "Cluster Upgrade", "title": "[single-org] [ap-tokyo-1] acmecorp - upgrade failed at step 4",
+      "url": "https://acme.atlassian.net/browse/SASUPG-211"
+    }
+  ]
+}

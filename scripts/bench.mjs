@@ -18,9 +18,11 @@
  *     only counts exact group matches tells you nothing about a near miss.
  *
  *   NAME QUALITY — are the group names descriptive? A name that is really an
- *     identifier ("AUTH-482", "acme/gateway") or a website ("GitHub") makes you
- *     remember what it referred to, which is the thing group names exist to
- *     avoid.
+ *     identifier ("AUTH-482", "acme/gateway"), a website ("GitHub"), or a piece
+ *     of one of the group's own hostnames ("mail-1") makes you remember what it
+ *     referred to, which is the thing group names exist to avoid. The hostname
+ *     check is there because domain grouping keeps finding new routes back in,
+ *     and it should be caught by a number rather than by noticing.
  *
  * Each fixture is scored twice:
  *
@@ -90,17 +92,32 @@ function scorePartition(tabs, predicted) {
  */
 const DESCRIBING_REASONS = new Set(['ai', 'summary', 'learned', 'misc']);
 
-function scoreNames(assignments) {
+function scoreNames(assignments, tabs) {
   const labels = [...assignments.values()]
     .filter((a) => DESCRIBING_REASONS.has(a.reason))
     .map((a) => a.label);
   const names = [...new Set(labels)];
   if (names.length === 0) return { quality: 1, bad: [] };
+
+  // Every hostname component in the fixture. A group named after one of these
+  // is grouping by domain whatever route it took to get there — which is how
+  // "domain grouping is active" was reported, after an over-broad
+  // internal-host guess quietly turned `mail-1.google.com` into `[mail-1]`.
+  const hostWords = new Set();
+  for (const t of tabs || []) {
+    try {
+      for (const part of new URL(t.url).hostname.toLowerCase().split('.')) {
+        if (part.length >= 2) hostWords.add(part);
+      }
+    } catch { /* not a URL */ }
+  }
+
   const bad = names.filter((n) => {
     if (looksLikeIdentifier(n)) return true;
     const words = n.toLowerCase().split(/\s+/);
-    // A single site word, or a name made only of site words.
-    return words.every((w) => SITE_NAMES.has(w));
+    if (words.every((w) => SITE_NAMES.has(w))) return true;
+    // A name that is nothing but hostname parts.
+    return words.every((w) => hostWords.has(w));
   });
   return { quality: (names.length - bad.length) / names.length, bad };
 }
@@ -151,7 +168,7 @@ async function runFixture(file, { verbose, threshold }) {
   const cold = await run(fx.memory || emptyMemory());
   const predicted = new Map([...cold].map(([id, a]) => [id, a.label]));
   const grouping = scorePartition(fx.tabs, predicted);
-  const naming = scoreNames(cold);
+  const naming = scoreNames(cold, fx.tabs);
 
   // --- Warm: after correcting it once. ---
   // Teaching from the gold grouping stands in for what a person does by hand:
@@ -168,7 +185,7 @@ async function runFixture(file, { verbose, threshold }) {
   const warm = await run(taught);
   const warmPredicted = new Map([...warm].map(([id, a]) => [id, a.label]));
   const warmGrouping = scorePartition(fx.tabs, warmPredicted);
-  const warmNaming = scoreNames(warm);
+  const warmNaming = scoreNames(warm, fx.tabs);
 
   const groupCount = new Set(predicted.values()).size;
   const goldCount = new Set(fx.tabs.map((t) => t.gold)).size;
