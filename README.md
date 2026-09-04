@@ -82,6 +82,31 @@ group or drag a tab, and that correction sticks.
 
 Pinned tabs are never grouped (Chrome can't group them).
 
+## Which on-device model does it use?
+
+Gemini Nano, via Chrome's Prompt API — and **the model is not selectable.**
+`LanguageModel.create()` takes no model parameter; you get what the browser
+ships. Sampling is tunable (temperature and topK), and this extension asks for a
+low temperature so labels stay stable between passes, clamped to whatever range
+`LanguageModel.params()` reports on your build.
+
+What *is* worth knowing is that the Prompt API is not the only built-in model.
+Chrome exposes task-specific ones — `Summarizer`, `LanguageDetector`,
+`Translator` and others — which are separate models with their own tuning, and
+they come and go between Chrome versions. Rather than guess, **Settings → On-device
+AI in this browser** probes your browser and lists what is actually there, what
+state each is in, and which ones this extension uses. A missing API explains a
+missing capability far better than a changelog does.
+
+Of those, `Summarizer` is the one with a clear job here: naming a group from
+page content is a summarization task, and a model tuned for it should beat
+prompting a general one. Not wired up yet — worth doing only once the probe
+shows it is available and the current naming is measurably the weak link.
+
+Running a genuinely larger local model would mean bundling one (WebGPU plus
+ONNX or similar) and shipping hundreds of megabytes of weights, with the load
+time and complexity that implies. That is a different product, not a setting.
+
 ## Requirements
 
 - **Chrome 138+** (the Prompt API for extensions is stable from 138).
@@ -450,6 +475,7 @@ lib/resolve.js       # the grouping pipeline, pure and benchmarkable
 lib/context.js       # scores how related any two tabs are, with no site rules
 lib/refs.js          # what counts as a work-item reference (vs. UTF-8, Q3-2026)
 lib/pageContent.js   # the ONLY file that can read a page; optional permission
+lib/aiProbe.js       # reports which built-in AI APIs this browser actually has
 lib/affinity.js      # turns those pairwise scores into clusters
 lib/taskSignal.js    # per-site knowledge, used only to phrase AI prompt hints
 lib/taskMemory.js    # what it has learned: your names, your pins, task profiles
@@ -470,7 +496,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 198 checks
+node scripts/test-grouping.mjs   # 205 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 

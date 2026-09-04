@@ -36,6 +36,7 @@ import {
   deleteSession,
 } from './lib/storage.js';
 import { checkAvailability, resetSession, prepareModel } from './lib/aiGrouper.js';
+import { probeAi } from './lib/aiProbe.js';
 import {
   loadMemory, updateMemory, clearMemory, forgetTask, listTasks,
   invalidateMemoryCache,
@@ -250,6 +251,9 @@ async function handleMessage(message) {
       } catch {
         return { ok: false, error: 'Tab not found' };
       }
+
+    case 'AI_PROBE':
+      return await probeAi();
 
     case 'AI_STATUS':
       return await checkAvailability();

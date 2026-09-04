@@ -65,6 +65,7 @@ async function loadSettings() {
   refreshAiStatus();
   loadMemoryList();
   refreshContentAccess();
+  loadProbe();
 }
 
 // --- Save ---
@@ -198,6 +199,78 @@ btnClearMemory.addEventListener('click', async () => {
   renderMemory(r.tasks);
   showToast('Forgot every learned task.');
 });
+
+// --- On-device AI capabilities ---
+
+const aiProbeEl = document.getElementById('ai-probe');
+const btnProbe = document.getElementById('btn-probe');
+
+function renderProbe(r) {
+  aiProbeEl.innerHTML = '';
+  if (!r || !r.apis) {
+    aiProbeEl.innerHTML = '<div class="mem-empty">Could not read AI capabilities.</div>';
+    return;
+  }
+
+  for (const a of r.apis) {
+    const row = document.createElement('div');
+    row.className = 'mem-row';
+
+    const name = document.createElement('span');
+    name.className = 'mem-name';
+    name.textContent = a.name;
+    row.appendChild(name);
+
+    const state = document.createElement('span');
+    state.className = 'mem-badge';
+    state.textContent = a.present ? a.availability : 'absent';
+    if (!a.present) {
+      state.style.color = '#6a6a8a';
+      state.style.borderColor = '#2a2a4a';
+      state.style.background = '#1a1a2e';
+    } else if (a.availability !== 'available') {
+      state.style.color = '#f5c86a';
+      state.style.borderColor = '#5a4a2a';
+      state.style.background = '#2a2418';
+    }
+    row.appendChild(state);
+
+    if (a.usedByThisExtension) {
+      const used = document.createElement('span');
+      used.className = 'mem-badge';
+      used.textContent = 'in use';
+      used.style.color = '#7fb2ff';
+      used.style.borderColor = '#24406b';
+      used.style.background = '#16203a';
+      row.appendChild(used);
+    }
+
+    const purpose = document.createElement('span');
+    purpose.className = 'mem-facts';
+    purpose.textContent = a.purpose;
+    purpose.title = a.via ? `Exposed as ${a.via}` : a.purpose;
+    row.appendChild(purpose);
+
+    aiProbeEl.appendChild(row);
+  }
+
+  const foot = document.createElement('div');
+  foot.className = 'mem-empty';
+  const p = r.promptParams;
+  foot.textContent = `Chrome ${r.chrome}. `
+    + (p
+      ? `Prompt API sampling: topK up to ${p.maxTopK} (default ${p.defaultTopK}), `
+        + `temperature up to ${p.maxTemperature} (default ${p.defaultTemperature}).`
+      : 'Prompt API sampling limits not reported by this build.');
+  aiProbeEl.appendChild(foot);
+}
+
+async function loadProbe() {
+  const r = await chrome.runtime.sendMessage({ type: 'AI_PROBE' });
+  renderProbe(r);
+}
+
+btnProbe.addEventListener('click', loadProbe);
 
 // --- Page access ---
 
@@ -342,6 +415,7 @@ btnPrepare.addEventListener('click', async () => {
   refreshAiStatus();
   loadMemoryList();
   refreshContentAccess();
+  loadProbe();
 });
 
 // --- Helpers ---
