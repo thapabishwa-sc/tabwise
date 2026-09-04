@@ -20,7 +20,7 @@ import {
 } from '../lib/taskMemory.js';
 import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
 import { redactUrl } from '../lib/tabManager.js';
-import { contentToText } from '../lib/pageContent.js';
+import { contentToText, gatherContent, __testing } from '../lib/pageContent.js';
 import { buildContext, extractFeatures, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
@@ -777,6 +777,56 @@ check('pin keys normalize host and trailing slash',
   check('an empty extraction is empty', contentToText(null), '');
   check('missing parts are skipped',
     contentToText({ headings: ['Only this'] }), 'Only this');
+}
+
+// --- Reading pages must never hang -----------------------------------------
+
+// Reported from real use: "Reading pages... 7/10, stuck".
+// chrome.scripting.executeScript returns a promise that neither resolves nor
+// rejects when the target renderer cannot run script, so three such tabs left
+// three pool workers awaiting forever, Promise.all never settled, and the busy
+// flag stayed set — which disables grouping for every other tab until the
+// service worker restarts.
+{
+  const { withTimeout } = __testing;
+  const never = () => new Promise(() => {});
+
+  check('a promise that never settles yields the fallback',
+    await withTimeout(never(), 60, 'FALLBACK'), 'FALLBACK');
+  check('a resolved promise passes through',
+    await withTimeout(Promise.resolve('ok'), 60, 'FALLBACK'), 'ok');
+  check('a rejection yields the fallback',
+    await withTimeout(Promise.reject(new Error('x')), 60, 'FALLBACK'), 'FALLBACK');
+
+  // Replay the report: ten readable tabs, three of which never answer.
+  const hangs = new Set([3, 6, 9]);
+  const saved = globalThis.chrome;
+  globalThis.chrome = {
+    permissions: { contains: async () => true },
+    storage: { session: { get: async () => ({}), set: async () => {}, remove: async () => {} } },
+    scripting: {
+      executeScript: async ({ target }) => {
+        if (hangs.has(target.tabId)) return never();
+        return [{ result: { ogTitle: `page ${target.tabId}`, headings: [], body: '' } }];
+      },
+    },
+  };
+  try {
+    const tabs = Array.from({ length: 10 }, (_, i) => ({ id: i + 1, url: `https://x.com/${i + 1}` }));
+    const seen = [];
+    const content = await gatherContent(tabs, {
+      timeoutMs: 40,
+      budgetMs: 2000,
+      onProgress: (done, total) => seen.push(`${done}/${total}`),
+    });
+    check('the gather completes despite tabs that never answer', content.size, 10);
+    check('progress reaches the total', seen[seen.length - 1], '10/10');
+    check('the tabs that answered were read',
+      content.get(1).startsWith('page 1'), true);
+    check('the tabs that hung are simply empty', content.get(3), '');
+  } finally {
+    globalThis.chrome = saved;
+  }
 }
 
 // --- A captured bug report must not carry secrets --------------------------
