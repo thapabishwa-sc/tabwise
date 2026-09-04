@@ -19,6 +19,7 @@ import {
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
 import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
+import { redactUrl } from '../lib/tabManager.js';
 import { buildContext, extractFeatures, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
@@ -643,6 +644,98 @@ check('pin keys normalize host and trailing slash',
     setting(bench, 'subdomainStrategy'), setting(storage, 'subdomainStrategy'));
   check('bench uses the real default host scope',
     setting(bench, 'subdomainScope'), setting(storage, 'subdomainScope'));
+}
+
+// --- The model may merge groups, within limits -----------------------------
+
+// The deterministic layer never invents a merge, so its errors are all merges
+// it declined to make. This is where a genuinely semantic one gets made — and
+// where a small model asked to compare things could spend the precision the
+// layer below it holds at 1.00, so the guards matter more than the feature.
+{
+  const tabs = [
+    { id: 1, title: 'AUTH-482 auth migration rollout plan', url: 'https://acme.atlassian.net/browse/AUTH-482' },
+    { id: 2, title: 'AUTH-482: fix token refresh', url: 'https://github.com/acme/gateway/pull/1203' },
+    { id: 3, title: 'AUTH-495 rotate signing keys', url: 'https://acme.atlassian.net/browse/AUTH-495' },
+    { id: 4, title: 'Q3 budget planning', url: 'https://docs.google.com/spreadsheets/d/q3budget2026/edit' },
+  ];
+  const settings = { minGroupSize: 1 };
+  const run = async (proposeMerges) => {
+    const { byLabel } = await resolveGroups(tabs, { settings, memory: emptyMemory(), proposeMerges });
+    return [...byLabel.values()].map((ids) => ids.sort((a, b) => a - b)).sort((a, b) => a[0] - b[0]);
+  };
+
+  check('without the pass, two tickets in one project stay apart',
+    await run(null), [[1, 2], [3], [4]]);
+
+  check('the model can join what only semantics could',
+    await run(async (gs) => {
+      const auth = gs.filter((g) => g.titles.some((t) => /AUTH-/.test(t)));
+      return auth.length === 2 ? [[auth[0].label, auth[1].label]] : [];
+    }), [[1, 2, 3], [4]]);
+
+  check('it is shown titles, not ids',
+    await (async () => {
+      let seen = null;
+      await run(async (gs) => { seen = gs; return []; });
+      return seen.every((g) => g.titles.every((t) => /[a-z]{3}/i.test(t)));
+    })(), true);
+
+  check('"everything matches" cannot collapse everything',
+    await run(async (gs) => gs.flatMap((g, i) => gs.slice(i + 1).map((h) => [g.label, h.label])))
+      .then((r) => r.length > 1), true);
+  check('a nonsense answer changes nothing',
+    await run(async () => [['Nope', 'Nothing'], ['x']]), [[1, 2], [3], [4]]);
+  check('a model that throws leaves the grouping alone',
+    await run(async () => { throw new Error('boom'); }), [[1, 2], [3], [4]]);
+
+  // Decisions already made are never put up for merging. Two loose pages are
+  // included so the pass actually runs and can be observed refusing them.
+  const guarded = [
+    { id: 1, title: 'Grafana', url: 'https://prod-eu-1-graf.corp.example.com/d/x' },
+    { id: 2, title: 'Grafana', url: 'https://prod-ap-1-graf.corp.example.com/d/x' },
+    { id: 3, title: 'Sourdough starter troubleshooting', url: 'https://example.com/baking/sourdough-starter' },
+    { id: 4, title: 'Bicycle drivetrain maintenance', url: 'https://other.example.com/cycling/drivetrain-care' },
+  ];
+  let offered = null;
+  const { byLabel } = await resolveGroups(guarded, {
+    settings: { minGroupSize: 1, internalDomains: ['corp.example.com'] },
+    memory: emptyMemory(),
+    proposeMerges: async (gs) => {
+      offered = gs.map((g) => g.label);
+      // A model that would merge anything it is handed.
+      return gs.length >= 2 ? [[gs[0].label, gs[1].label]] : [];
+    },
+  });
+  check('the pass runs when there are groups to compare', offered !== null, true);
+  check('internal-host groups are never offered for merging',
+    (offered || []).some((l) => l.startsWith('prod-')), false);
+  check('so two clusters survive a model that would have merged them',
+    [...byLabel.keys()].filter((l) => l.startsWith('prod-')).length, 2);
+}
+
+// --- A captured bug report must not carry secrets --------------------------
+
+// Capturing a window produces a fixture meant to be pasted into a bug report,
+// so it leaves the browser. Grouping reads host and path and almost never the
+// query, which makes dropping credential-shaped parameters free.
+{
+  const q = (url) => new URL(redactUrl(url)).searchParams;
+  check('an access token is redacted',
+    q('https://x.com/a?token=SECRET&page=2').get('token'), 'REDACTED');
+  check('but ordinary parameters survive',
+    q('https://x.com/a?token=SECRET&page=2').get('page'), '2');
+  for (const name of ['api_key', 'session', 'password', 'sig', 'bearer', 'access_token']) {
+    check(`${name} is redacted`, q(`https://x.com/a?${name}=v`).get(name), 'REDACTED');
+  }
+  check('a search query is kept, since it says what the work is',
+    q('https://x.com/s?q=oauth+refresh').get('q'), 'oauth refresh');
+  check('the fragment is dropped',
+    redactUrl('https://x.com/a#inbox/secret-thread'), 'https://x.com/a');
+  check('the path is untouched',
+    redactUrl('https://x.com/wiki/spaces/EN/pages/1/Onboarding'),
+    'https://x.com/wiki/spaces/EN/pages/1/Onboarding');
+  check('a malformed URL is returned unchanged', redactUrl('not a url'), 'not a url');
 }
 
 // --- Report ---------------------------------------------------------------

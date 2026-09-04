@@ -50,6 +50,9 @@ group or drag a tab, and that correction sticks.
   means a configured domain, a private marker (`.corp.`, `.internal`), a bare or
   IP host, or a dashed cluster name like `prod-eu-1-grafana` — *not* merely
   having a subdomain, which would drag every SaaS host back into host grouping.
+- **Tidy loose tabs** — group only the ungrouped ones, leaving settled groups
+  alone. "Group all tabs" reorganizes everything, which is the wrong tool once
+  most of your groups are right.
 - **Task groups** — capture the loose tabs into a named task group that stays
   put, or use the natural-language box ("group my tabs for the billing work").
 - **Accordion** — collapse every group except the one you're in, automatically
@@ -143,6 +146,14 @@ the group is resolved in order of authority:
 7. **Task cluster, named** — everything left is clustered by shared work item,
    then named by the on-device model, or from the tabs' own titles when the
    model is unavailable.
+8. **The model merges what only semantics could** — finally it is asked which
+   groups are actually one piece of work. Whether `AUTH-482` and `AUTH-495` are
+   one effort cannot be read off a URL, and every step above correctly refuses
+   to guess. Guarded: only groups the model itself named are ever offered (never
+   your own filing, a pinned rule, an internal host, or a task you named), and
+   at most a third of them can be merged away in one pass, so an answer of "all
+   of these match" collapses nothing. Merges only — it can never split what the
+   steps above established. Turn it off with **Let AI merge groups**.
 
 Clustering happens *before* naming, so a cluster is an atom: the model names it
 but can never split it, and a task assembled from a link trail survives. Names
@@ -274,6 +285,18 @@ weight table, so there is one definition of what evidence is worth rather than
 two that drift apart. See everything it has learned, and forget any of it, under
 **Settings → What it has learned**.
 
+## Reporting a grouping problem
+
+**Settings → Report a grouping problem → Capture this window** turns your open
+tabs into a benchmark fixture, with `gold` pre-filled from where each tab
+actually landed and `_why` recording which stage put it there. Correct the ones
+that are wrong, save it under `scripts/fixtures/`, and the problem becomes a
+number that can be fixed and kept fixed rather than argued about.
+
+Every grouping bug in this project so far was found by real tabs. URLs have
+credential-shaped query parameters and fragments removed, but the capture still
+contains your titles and paths — read it before sharing it.
+
 ## Is the grouping actually good?
 
 ```bash
@@ -375,6 +398,7 @@ Company-specific config isn't baked into the extension. Apply it at runtime via
 |---|---|---|
 | When to group | Automatic | `auto` (as tabs load) or `manual` (only when you ask). |
 | AI groups by project/task | on | Bias AI labels toward work-streams, not generic topics. |
+| Let AI merge groups | on | After grouping, ask the model which groups are one piece of work. |
 | Follow link trails | on | A tab opened from another joins that tab's group. |
 | Accordion | on | Collapse inactive groups as you switch tabs. |
 | Respect manual groups | on | Don't touch groups you created yourself. |
@@ -417,7 +441,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 166 checks
+node scripts/test-grouping.mjs   # 187 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 

@@ -126,6 +126,13 @@
     </div>
     <div class="field">
       <div>
+        <label>Let AI merge groups</label>
+        <div class="hint">After grouping, ask the model which groups are really one piece of work — whether two tickets are one effort is the kind of thing only it can judge. Guarded: it is only offered groups it named itself (never your own filing, a pinned rule, or an internal host), and can merge away at most a third of them at once.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="aiMergePass"><span class="slider"></span></label>
+    </div>
+    <div class="field">
+      <div>
         <label>Follow link trails</label>
         <div class="hint">A tab opened from another tab joins that tab's group right away — following a link from a ticket to its pull request keeps them together. The most reliable "same work" signal there is, and it needs no AI call. Turn off to classify every new tab from scratch.</div>
       </div>
@@ -221,6 +228,23 @@
     </p>
     <textarea id="pinnedRules" placeholder="atlassian.net/wiki = Confluence&#10;atlassian.net = Jira&#10;github.com = Code"></textarea>
     <div class="textarea-hint">The left side is matched as a substring of the tab's hostname + path (case-insensitive). First match wins — list more specific rules first. Advanced <b>regex capture</b> rules (e.g. group Jira by project key) are applied via Import and preserved here.</div>
+  </div>
+
+  <!-- Report a grouping problem -->
+  <div class="section">
+    <h2>Report a grouping problem</h2>
+    <p style="font-size:12px;color:#6a6a8a">
+      Grouped something wrong? Capture the window as a test case. The
+      <code>gold</code> field is pre-filled with where each tab actually landed, and
+      <code>_why</code> records which stage put it there — correct the ones that are
+      wrong, and it becomes a fixture that can be measured and fixed rather than
+      guessed at. URLs have credential-shaped query parameters and fragments removed,
+      but <b>read it before sharing</b>: titles and paths are included as-is.
+    </p>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn" id="btn-capture">Capture this window</button>
+    </div>
+    <textarea id="capture-json" placeholder="The captured test case appears here."></textarea>
   </div>
 
   <!-- Import / Export (runtime overrides) -->

@@ -7,6 +7,7 @@
 
 import {
   organizeAllTabs,
+  organizeLooseTabs,
   autoGroupTab,
   ungroupAll,
   getGroupsSnapshot,
@@ -19,6 +20,7 @@ import {
   captureTaskGroup,
   snapshotSession,
   restoreSession,
+  captureFixture,
   isBusy,
   getReasons,
   reasonText,
@@ -168,6 +170,9 @@ async function handleMessage(message) {
     case 'ORGANIZE_ALL':
       return await organizeAllTabs();
 
+    case 'ORGANIZE_LOOSE':
+      return await organizeLooseTabs(message.windowId);
+
     case 'UNGROUP_ALL':
       return await ungroupAll(message.windowId);
 
@@ -185,6 +190,9 @@ async function handleMessage(message) {
 
     case 'TASK_GROUP':
       return await captureTaskGroup(message.name, message.windowId);
+
+    case 'CAPTURE_FIXTURE':
+      return { fixture: await captureFixture(message.windowId) };
 
     case 'GET_SESSIONS':
       return { sessions: await getSessions() };

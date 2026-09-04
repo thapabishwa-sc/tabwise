@@ -1,6 +1,7 @@
 const fields = {
   groupingMode: document.getElementById('groupingMode'),
   aiProjectMode: document.getElementById('aiProjectMode'),
+  aiMergePass: document.getElementById('aiMergePass'),
   collapseInactive: document.getElementById('collapseInactive'),
   respectManualGroups: document.getElementById('respectManualGroups'),
   minGroupSize: document.getElementById('minGroupSize'),
@@ -32,6 +33,7 @@ async function loadSettings() {
   const s = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
   fields.groupingMode.value = s.groupingMode === 'auto' ? 'auto' : 'manual';
   fields.aiProjectMode.checked = !!s.aiProjectMode;
+  fields.aiMergePass.checked = s.aiMergePass !== false;
   fields.collapseInactive.checked = !!s.collapseInactive;
   fields.useOpenerAffinity.checked = s.useOpenerAffinity !== false;
   fields.respectManualGroups.checked = s.respectManualGroups !== false;
@@ -91,6 +93,7 @@ btnSave.addEventListener('click', async () => {
   const settings = {
     groupingMode: fields.groupingMode.value === 'auto' ? 'auto' : 'manual',
     aiProjectMode: fields.aiProjectMode.checked,
+    aiMergePass: fields.aiMergePass.checked,
     collapseInactive: fields.collapseInactive.checked,
     respectManualGroups: fields.respectManualGroups.checked,
     minGroupSize: Math.max(1, parseInt(fields.minGroupSize.value, 10) || 1),
@@ -190,6 +193,23 @@ btnClearMemory.addEventListener('click', async () => {
   const r = await chrome.runtime.sendMessage({ type: 'CLEAR_MEMORY' });
   renderMemory(r.tasks);
   showToast('Forgot every learned task.');
+});
+
+// --- Capture a grouping problem as a test case ---
+
+const btnCapture = document.getElementById('btn-capture');
+const captureJson = document.getElementById('capture-json');
+
+btnCapture.addEventListener('click', async () => {
+  const r = await chrome.runtime.sendMessage({ type: 'CAPTURE_FIXTURE' });
+  if (!r || !r.fixture) {
+    showToast('Could not read the tabs.');
+    return;
+  }
+  captureJson.value = JSON.stringify(r.fixture, null, 2);
+  captureJson.focus();
+  captureJson.select();
+  showToast(`Captured ${r.fixture.tabs.length} tabs — review before sharing.`);
 });
 
 // --- Import / Export (runtime overrides) ---

@@ -2,6 +2,7 @@
 const aiBadge = document.getElementById('ai-badge');
 const btnSettings = document.getElementById('btn-settings');
 const btnOrganize = document.getElementById('btn-organize');
+const btnTidy = document.getElementById('btn-tidy');
 const btnUngroup = document.getElementById('btn-ungroup');
 const statusEl = document.getElementById('status');
 const groupsEl = document.getElementById('groups');
@@ -310,6 +311,22 @@ function showMovePicker(row, tabId, currentGroupTitle) {
 // =============================================
 // ACTIONS
 // =============================================
+
+btnTidy.addEventListener('click', async () => {
+  btnTidy.disabled = true;
+  btnTidy.textContent = 'Tidying…';
+  statusEl.textContent = '';
+  const res = await chrome.runtime.sendMessage({ type: 'ORGANIZE_LOOSE' });
+  btnTidy.disabled = false;
+  btnTidy.textContent = 'Tidy loose';
+
+  if (res && res.organized === 0) {
+    statusEl.textContent = 'Nothing loose to tidy.';
+  } else if (res && typeof res.organized === 'number') {
+    statusEl.textContent = `Grouped ${res.organized} loose tab${res.organized === 1 ? '' : 's'}.`;
+  }
+  await init();
+});
 
 btnOrganize.addEventListener('click', async () => {
   btnOrganize.disabled = true;
