@@ -23,6 +23,7 @@ import {
   captureFixture,
   isBusy,
   getReasons,
+  clearReasons,
   reasonText,
   noteTabOrigin,
   forgetTabOrigin,
@@ -39,6 +40,7 @@ import { checkAvailability, resetSession, prepareModel } from './lib/aiGrouper.j
 import { probeAi } from './lib/aiProbe.js';
 import {
   loadMemory, updateMemory, clearMemory, forgetTask, listTasks,
+  forgetFeature, addFeature, renameTask, wordFeature,
   invalidateMemoryCache,
 } from './lib/taskMemory.js';
 import {
@@ -178,6 +180,30 @@ async function handleMessage(message) {
     case 'FORGET_TASK': {
       const m = await updateMemory((mem) => forgetTask(mem, message.label));
       return { tasks: listTasks(m) };
+    }
+
+    case 'EDIT_TASK': {
+      const { label, action, feature, text, newLabel } = message;
+      const m = await updateMemory((mem) => {
+        if (action === 'remove') return forgetFeature(mem, label, feature);
+        if (action === 'add') {
+          const key = wordFeature(text);
+          return key ? addFeature(mem, label, key) : mem;
+        }
+        if (action === 'rename') return renameTask(mem, label, newLabel);
+        return mem;
+      });
+      return { tasks: listTasks(m) };
+    }
+
+    case 'REFRESH_AI_CONTEXT': {
+      // Drop everything transient the model and the reader have accumulated,
+      // without touching what has been learned — that is a separate, explicit
+      // decision.
+      resetSession();
+      await clearContentCache();
+      await clearReasons();
+      return { ok: true };
     }
 
     case 'CLEAR_MEMORY': {

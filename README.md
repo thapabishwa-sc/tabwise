@@ -98,6 +98,11 @@ AI in this browser** probes your browser and lists what is actually there, what
 state each is in, and which ones this extension uses. A missing API explains a
 missing capability far better than a changelog does.
 
+**Settings → Refresh AI context** starts the model from a clean slate: it
+destroys the current session, clears the cached page summaries so pages are
+re-read, and drops the stored per-tab explanations. Learned tasks are
+deliberately left alone — forgetting those is a separate, explicit button.
+
 Of those, `Summarizer` is the one with a clear job here: naming a group from
 page content is a summarization task, and a model tuned for it should beat
 prompting a general one. Not wired up yet — worth doing only once the probe
@@ -327,6 +332,14 @@ are recorded ([`lib/taskMemory.js`](lib/taskMemory.js)):
 | Capture a task (**+ Task**) | Both the name and the membership are yours, so it becomes the strongest profile of all. |
 | Nothing | Groups it made are still profiled weakly, so a task that recurs is recognized rather than re-derived. |
 
+**Settings → What it has learned** shows every task as a list of the individual
+signals it is recognized by — work items, words, places — each removable with
+its own **×**. Removing one is usually better than forgetting the whole task: a
+profile that picked up "org" from a queue's bracketed tags is worth keeping once
+that word is gone. A removed signal is also **never learned again**, even if the
+same tabs come back, or editing would be futile. Words can be added by hand for
+a task that keeps missing something, and a task can be renamed in place.
+
 A task is recognized by its work items first (decisive), then by subject words
 and paths, which have to add up — any two tabs on `docs.google.com` share a
 host, and that is precisely the inference this project exists to stop making.
@@ -475,7 +488,7 @@ Company-specific config isn't baked into the extension. Apply it at runtime via
 | Internal host labels | One group per cluster | `cluster` (services on a cluster share a group) / `subdomain` (one per service) / `host` / `ai`. |
 | Service name tokens | (built-in list) | Trailing hostname parts naming a service rather than a cluster (`dl`, `da`, `jumper`, `grafana`, …). |
 | Pinned rules | (above) | Force URLs into fixed groups. |
-| What it has learned | — | Review and forget learned tasks (not a setting; a list). |
+| What it has learned | — | Review, edit and forget learned tasks (not a setting; a list). |
 
 Keyboard shortcut: **Alt+Shift+G** — group all tabs now.
 
@@ -509,7 +522,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 205 checks
+node scripts/test-grouping.mjs   # 243 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 

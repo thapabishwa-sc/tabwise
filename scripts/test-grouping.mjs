@@ -16,6 +16,7 @@ import { isInternalHost, subdomainGroupLabel } from '../lib/url.js';
 import { consolidateLabels } from '../lib/aiGrouper.js';
 import {
   emptyMemory, observe, learnRename, learnMove, forgetTask,
+  forgetFeature, addFeature, renameTask, wordFeature,
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
 import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
@@ -598,6 +599,54 @@ const authGroup = [
     warm.assignments.get(1).label === warm.assignments.get(2).label, true);
   check('under the name you gave', warm.assignments.get(1).label, 'SSO Work');
   check('and it says it learned that', warm.assignments.get(1).reason, 'learned');
+}
+
+// --- Editing what a task has learned ---------------------------------------
+
+// The useful unit of correction is often one bad signal, not the whole task: a
+// profile that picked up "org" from a queue's bracketed tags is worth keeping
+// once that word is gone.
+{
+  const tabs = [{
+    id: 1,
+    title: '[single-org] customerpoc - onboarding',
+    url: 'https://acme.atlassian.net/browse/SASOBD-603',
+  }];
+  let m = observe(emptyMemory(), 'Tenant Onboarding', tabs, { userNamed: true });
+  const has = (mem, f) => listTasks(mem)[0].features.includes(f);
+
+  check('a signal can be removed on its own', has(m, 'word:customerpoc'), true);
+  m = forgetFeature(m, 'Tenant Onboarding', 'word:customerpoc');
+  check('and is gone', has(m, 'word:customerpoc'), false);
+  check('while the rest of the profile survives', has(m, 'ref:SASOBD-603'), true);
+
+  // The part that makes editing mean anything.
+  m = observe(m, 'Tenant Onboarding', tabs);
+  check('a removed signal is not re-learned from the same tabs',
+    has(m, 'word:customerpoc'), false);
+
+  // Adding, and un-blocking by adding back.
+  m = addFeature(m, 'Tenant Onboarding', wordFeature('Billing'));
+  check('a word can be added by hand', has(m, 'word:billing'), true);
+  m = addFeature(m, 'Tenant Onboarding', 'word:customerpoc');
+  check('adding back a removed signal un-blocks it', has(m, 'word:customerpoc'), true);
+  m = observe(m, 'Tenant Onboarding', tabs);
+  check('and it then survives being re-observed', has(m, 'word:customerpoc'), true);
+
+  check('a typed phrase becomes one word feature', wordFeature('  Billing  '), 'word:billing');
+  check('a word too short or too common yields nothing', wordFeature('the'), null);
+
+  // Renaming from the list, with no group to read tabs from.
+  m = renameTask(m, 'Tenant Onboarding', 'Tenant Setup');
+  check('a task can be renamed in place', listTasks(m).map((t) => t.label), ['Tenant Setup']);
+  check('and is still recognized under the new name',
+    recallForTabs(m, tabs).label, 'Tenant Setup');
+  check('renaming to nothing is ignored',
+    listTasks(renameTask(m, 'Tenant Setup', '   ')).map((t) => t.label), ['Tenant Setup']);
+
+  // Editing a task that is not there must not invent one.
+  check('editing an unknown task is a no-op',
+    listTasks(forgetFeature(m, 'Nonexistent', 'word:x')).length, 1);
 }
 
 check('pin keys normalize host and trailing slash',

@@ -58,6 +58,31 @@
     }
     .mem-facts { flex: 1 1 auto; font-size: 11px; color: #6a6a8a; min-width: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Editable profile: one chip per learned signal. */
+    .mem-row { flex-wrap: wrap; }
+    .mem-head { display: flex; align-items: center; gap: 10px; width: 100%; }
+    .mem-sig { display: flex; flex-wrap: wrap; gap: 5px; width: 100%; margin-top: 4px; }
+    .sig-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .sig-label { font-size: 10px; color: #5a5a7a; min-width: 46px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; padding: 2px 5px; border-radius: 3px;
+      border: 1px solid #2a2a4a; background: #1a1a2e; color: #b0b0cc;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .chip.id { color: #7ee0a8; border-color: #23503a; }
+    .chip.word { color: #b9a3ff; border-color: #3b3068; }
+    .chip.place { color: #6a6a8a; }
+    .chip button {
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-size: 12px; line-height: 1; padding: 0; opacity: .5;
+    }
+    .chip button:hover { opacity: 1; color: #f5a3b5; }
+    .sig-add { display: flex; gap: 5px; width: 100%; margin-top: 6px; }
+    .sig-add input {
+      flex: 0 0 180px; background: #1a1a2e; border: 1px solid #2a2a4a;
+      color: #e0e0e0; padding: 3px 6px; border-radius: 3px; font-size: 11px; outline: none;
+    }
     .mem-empty { font-size: 12px; color: #6a6a8a; font-style: italic; }
     .btn.danger { border-color: #5a2a3a; color: #f5a3b5; }
     .btn.danger:hover { background: #3a1a26; }
@@ -216,6 +241,13 @@
     <div id="ai-probe" class="memory-list"></div>
     <div class="actions" style="margin-top:10px">
       <button class="btn" id="btn-probe">Re-check</button>
+      <button class="btn" id="btn-refresh-ai">Refresh AI context</button>
+    </div>
+    <div class="textarea-hint">
+      <b>Refresh AI context</b> starts the model on a clean slate and re-reads pages
+      next time: it destroys the current model session and clears the cached page
+      summaries and stored explanations. Learned tasks are left alone — forgetting
+      those is the separate button below.
     </div>
   </div>
 
@@ -260,11 +292,16 @@
     <p style="font-size:12px;color:#6a6a8a">
       Every group you rename, and every tab you file by hand, teaches this list. A task
       here is recognized instantly next time — no AI call — and keeps the name
-      <b>you</b> chose. Forget one if it starts pulling in the wrong tabs.
+      <b>you</b> chose.
+      <br><br>
+      Each signal below is one thing the task is recognized by. Remove a bad one with
+      its <b>×</b> and it will not be learned again, even if the same tabs come back —
+      often better than forgetting the whole task. Add a word to make a task match
+      something it keeps missing.
     </p>
     <div id="memory-list" class="memory-list"></div>
     <div class="actions" style="margin-top:10px">
-      <button class="btn" id="btn-refresh-memory">Refresh</button>
+      <button class="btn" id="btn-refresh-memory">Reload list</button>
       <button class="btn danger" id="btn-clear-memory">Forget everything</button>
     </div>
   </div>

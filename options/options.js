@@ -127,6 +127,25 @@ const memoryListEl = document.getElementById('memory-list');
 const btnRefreshMemory = document.getElementById('btn-refresh-memory');
 const btnClearMemory = document.getElementById('btn-clear-memory');
 
+/** Group a task's raw feature keys into the three kinds worth showing. */
+function groupSignals(features) {
+  const out = { id: [], word: [], place: [] };
+  for (const key of features || []) {
+    const kind = key.slice(0, key.indexOf(':'));
+    const value = key.slice(key.indexOf(':') + 1);
+    if (kind === 'ref' || kind === 'opaque' || kind === 'item') out.id.push([key, value]);
+    else if (kind === 'word') out.word.push([key, value]);
+    else out.place.push([key, value]);
+  }
+  return out;
+}
+
+const SIGNAL_HELP = {
+  id: 'A work item: a ticket, a pull request, a document. Decisive on its own.',
+  word: 'A distinctive word. Several must agree to match.',
+  place: 'A host or path this task lives in. Weak on its own.',
+};
+
 function renderMemory(tasks) {
   memoryListEl.innerHTML = '';
   if (!tasks || tasks.length === 0) {
@@ -138,51 +157,107 @@ function renderMemory(tasks) {
     return;
   }
 
+  const edit = async (body) => {
+    const r = await chrome.runtime.sendMessage({ type: 'EDIT_TASK', ...body });
+    renderMemory(r.tasks);
+  };
+
   for (const t of tasks) {
     const row = document.createElement('div');
     row.className = 'mem-row';
 
+    // --- header: name, provenance, and the whole-task actions ---
+    const head = document.createElement('div');
+    head.className = 'mem-head';
+
     const name = document.createElement('span');
     name.className = 'mem-name';
     name.textContent = t.label;
-    row.appendChild(name);
+    head.appendChild(name);
 
     if (t.userNamed) {
       const badge = document.createElement('span');
       badge.className = 'mem-badge';
       badge.textContent = 'your name';
-      row.appendChild(badge);
+      head.appendChild(badge);
     }
 
-    // What this task is recognized by, so a bad match is diagnosable.
-    // Identifiers first — they are what actually settles a match.
-    const facts = document.createElement('span');
-    facts.className = 'mem-facts';
-    const shown = { id: [], word: [], place: [] };
-    for (const key of t.features || []) {
-      const kind = key.slice(0, key.indexOf(':'));
-      const value = key.slice(key.indexOf(':') + 1);
-      if (kind === 'ref' || kind === 'opaque' || kind === 'item') shown.id.push(value);
-      else if (kind === 'word') shown.word.push(value);
-      else shown.place.push(value);
-    }
-    const bits = [];
-    if (shown.id.length) bits.push(shown.id.slice(0, 4).join(', '));
-    if (shown.word.length) bits.push(shown.word.slice(0, 6).join(' '));
-    if (shown.place.length) bits.push(shown.place.slice(0, 2).join(', '));
-    facts.textContent = bits.join('  ·  ') || 'no signals yet';
-    facts.title = (t.features || []).join('\n') || 'no signals yet';
-    row.appendChild(facts);
+    const spacer = document.createElement('span');
+    spacer.className = 'mem-facts';
+    spacer.textContent = `${t.hits || 0} sighting${t.hits === 1 ? '' : 's'}`;
+    head.appendChild(spacer);
+
+    const rename = document.createElement('button');
+    rename.className = 'btn';
+    rename.textContent = 'Rename';
+    rename.addEventListener('click', () => {
+      const next = prompt(`Rename "${t.label}" to:`, t.label);
+      if (next && next.trim() && next.trim() !== t.label) {
+        edit({ label: t.label, action: 'rename', newLabel: next.trim() });
+      }
+    });
+    head.appendChild(rename);
 
     const forget = document.createElement('button');
-    forget.className = 'btn';
+    forget.className = 'btn danger';
     forget.textContent = 'Forget';
     forget.addEventListener('click', async () => {
       const r = await chrome.runtime.sendMessage({ type: 'FORGET_TASK', label: t.label });
       renderMemory(r.tasks);
       showToast(`Forgot "${t.label}".`);
     });
-    row.appendChild(forget);
+    head.appendChild(forget);
+    row.appendChild(head);
+
+    // --- the signals themselves, each removable ---
+    const signals = groupSignals(t.features);
+    const sig = document.createElement('div');
+    sig.className = 'mem-sig';
+
+    for (const kind of ['id', 'word', 'place']) {
+      if (signals[kind].length === 0) continue;
+      const group = document.createElement('div');
+      group.className = 'sig-group';
+
+      const label = document.createElement('span');
+      label.className = 'sig-label';
+      label.textContent = kind === 'id' ? 'items' : kind === 'word' ? 'words' : 'places';
+      label.title = SIGNAL_HELP[kind];
+      group.appendChild(label);
+
+      for (const [key, value] of signals[kind]) {
+        const chip = document.createElement('span');
+        chip.className = `chip ${kind}`;
+        chip.append(document.createTextNode(value));
+
+        const x = document.createElement('button');
+        x.textContent = '×';
+        x.title = 'Remove this signal, and never learn it again';
+        x.addEventListener('click', () => edit({ label: t.label, action: 'remove', feature: key }));
+        chip.appendChild(x);
+        group.appendChild(chip);
+      }
+      sig.appendChild(group);
+    }
+    row.appendChild(sig);
+
+    // --- add a word by hand ---
+    const add = document.createElement('div');
+    add.className = 'sig-add';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'add a word this task is about…';
+    const go = document.createElement('button');
+    go.className = 'btn';
+    go.textContent = 'Add';
+    const submit = () => {
+      const text = input.value.trim();
+      if (text) edit({ label: t.label, action: 'add', text });
+    };
+    go.addEventListener('click', submit);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    add.append(input, go);
+    row.appendChild(add);
 
     memoryListEl.appendChild(row);
   }
@@ -271,6 +346,14 @@ async function loadProbe() {
 }
 
 btnProbe.addEventListener('click', loadProbe);
+
+const btnRefreshAi = document.getElementById('btn-refresh-ai');
+btnRefreshAi.addEventListener('click', async () => {
+  btnRefreshAi.disabled = true;
+  await chrome.runtime.sendMessage({ type: 'REFRESH_AI_CONTEXT' });
+  btnRefreshAi.disabled = false;
+  showToast('Model session reset and cached page summaries cleared.');
+});
 
 // --- Page access ---
 
