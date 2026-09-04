@@ -19,7 +19,7 @@ import {
   recallForTabs, recallPin, resolveAlias, listTasks, pinKey,
 } from '../lib/taskMemory.js';
 import { resolveGroups, relatedGroupFor, hasSettled } from '../lib/resolve.js';
-import { buildContext, identitiesOf, namesWork } from '../lib/context.js';
+import { buildContext, extractFeatures, identitiesOf, namesWork } from '../lib/context.js';
 
 let pass = 0;
 const failures = [];
@@ -578,6 +578,39 @@ const authGroup = [
 
 check('pin keys normalize host and trailing slash',
   pinKey('https://WWW.Example.com/a/b/'), 'example.com/a/b');
+
+// --- The URL's last segment is the backup description ----------------------
+
+// Page content is never read, so a title is the main description. When it is
+// just a product name — the state a tab is in before an app sets its title,
+// and permanently for some dashboards — the slug is all that is left. Without
+// this, such pages fell all the way back to hostname grouping, which is the
+// exact failure this project exists to remove.
+{
+  const subjectOf = (title, url) => [...extractFeatures({ id: 1, title, url }).features.keys()]
+    .filter((k) => k.startsWith('word:')).map((k) => k.slice(5));
+
+  check('a descriptive slug supplies subject matter when the title cannot',
+    subjectOf('Confluence', 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding'),
+    ['saas', 'onboarding', 'offboarding']);
+  check('and it groups pages a generic title could not',
+    clusterTabs([
+      { id: 1, title: 'Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding' },
+      { id: 2, title: 'Grafana', url: 'https://grafana.acme.io/d/abc123/saas-onboarding-latency' },
+      { id: 3, title: 'Confluence', url: 'https://acme.atlassian.net/wiki/spaces/FIN/pages/4419900012/Billing+export+reconciliation' },
+    ]).map(c => c.tabs.map(t => t.id)), [[1, 2], [3]]);
+  check('the group is named from the slug too',
+    nameCluster({ key: null, tabs: [
+      { title: 'Confluence', url: 'https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding' },
+      { title: 'Grafana', url: 'https://grafana.acme.io/d/abc123/saas-onboarding-latency' },
+    ] }), 'Saas Onboarding');
+
+  // Interior segments are still containers, not subject matter.
+  check('only the leaf contributes, not the path above it',
+    subjectOf('', 'https://github.com/acme/monorepo/pull/500'), []);
+  check('an opaque leaf contributes nothing',
+    subjectOf('Google Docs', 'https://docs.google.com/document/d/1kQm7yTvB2xNpLr9WsEc/edit'), []);
+}
 
 // --- A tab is only judged once it can say what it is -----------------------
 

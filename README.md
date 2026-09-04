@@ -194,6 +194,13 @@ Three structural details do a lot of work:
   so it is what the page is about. Pull request titles end with their repository
   name, and without this distinction a repository name reads as subject matter
   and merges every ticket in the repo.
+
+  The leaf is also read as subject matter in its own right, which matters more
+  than it sounds: page content is never read, so a **title is the main
+  description of a page** — and when a title is just a product name
+  ("Confluence", "Grafana"), which is the state a tab is in before an app sets
+  its title and permanently for some dashboards, the slug is the only thing
+  left. Without it those pages fell all the way back to hostname grouping.
 - **A path ending in a bare number is item N of its container.** The only thing
   telling `/pull/1` from `/pull/2` apart is the number, so it counts as an
   identity despite being far too short to look like one.
@@ -410,7 +417,7 @@ scripts/fixtures/          # hand-labelled tab sets used by the benchmark
 Neither script needs a browser or the model:
 
 ```bash
-node scripts/test-grouping.mjs   # 144 checks
+node scripts/test-grouping.mjs   # 166 checks
 node scripts/bench.mjs           # grouping F1 + name quality, cold vs warm
 ```
 
@@ -447,6 +454,13 @@ All AI runs on-device via Chrome's built-in model. The extension requests only
 `tabs`, `tabGroups`, and `storage` — no host permissions, no network calls of
 its own, and it never reads page content: everything it knows comes from tab
 titles and URLs.
+
+What that costs, honestly: **a page is only as groupable as its title and URL
+say it is.** A page whose title is generic *and* whose URL is an opaque id — an
+untitled Google Doc, say — carries no description at all, and will sit on its
+own until you file it somewhere, which teaches it for next time. Reading page
+content would fix that, and would mean requesting access to the content of every
+page you visit. That trade is not worth making silently, so it is not made.
 
 Settings, saved sessions and everything it has learned live in
 `chrome.storage.local` on your machine. Learned tasks store task keys, hostnames

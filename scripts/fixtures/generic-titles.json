@@ -1,0 +1,13 @@
+{
+  "name": "generic-titles",
+  "description": "Pages whose titles are just the product name — the state a tab is in before an app sets its title, and permanently for some dashboards. Page content is never read, so the URL's last segment is the only thing left saying what the page is about. Two work streams here are distinguishable only by their slugs.",
+  "settings": { "minGroupSize": 1 },
+  "tabs": [
+    { "id": 1, "gold": "Saas Onboarding", "title": "Confluence", "url": "https://acme.atlassian.net/wiki/spaces/EN/pages/2758606863/NG-SaaS+onboarding+offboarding" },
+    { "id": 2, "gold": "Saas Onboarding", "title": "Grafana", "url": "https://grafana.acme.io/d/abc123/saas-onboarding-latency" },
+    { "id": 3, "gold": "Saas Onboarding", "title": "Google Docs", "url": "https://docs.google.com/document/d/1kQm7yTvB2xNpLr9WsEc/edit" },
+    { "id": 4, "gold": "Billing Export", "title": "Confluence", "url": "https://acme.atlassian.net/wiki/spaces/FIN/pages/4419900012/Billing+export+reconciliation" },
+    { "id": 5, "gold": "Billing Export", "title": "Grafana", "url": "https://grafana.acme.io/d/xyz789/billing-export-failures" },
+    { "id": 6, "gold": "Kernel Reading", "title": "LWN.net", "url": "https://lwn.net/Articles/999123/" }
+  ]
+}
